@@ -3,8 +3,10 @@
 library(readxl)
 library(MASS)
 library(dplyr)
+library(ggplot2)
+library(tidyr)
 
-############ Background survey analysis ############
+ ############ Background survey analysis ############
 #survey25 <- read_excel("/Users/yanyuma/Downloads/0research/04 price setting/background/20250123 Bushel 2025 SOTF Raw Data.xlsx", sheet = 2)
 #nrow(survey25) #1337
 #ncol(survey25) #395
@@ -130,6 +132,17 @@ surveyhistory <- surveyhistory %>%
   mutate(Options = ifelse(is.na(`Options:Which of the following grain marketing practices do you use?Select all that apply.`), 0, 1))
 surveyhistory <- surveyhistory %>%
   mutate(Forward_cash_contract = ifelse(is.na(`Forward cash contract:Which of the following grain marketing practices do you use?Select all that apply.`), 0, 1))
+
+surveyhistory <- surveyhistory %>%
+  mutate(hedge = ifelse(
+    Futures_hedge == 1 |
+      Production_contract == 1 |
+      HTA_contract == 1 |
+      Options == 1 |
+      Forward_cash_contract == 1,
+    1, 0
+  ))
+
 
 count_all_zero_for_year <- function(data, year, vars) {
   year_data <- subset(data, Year == year)
@@ -260,6 +273,123 @@ cat("2024 no pricing strategies :", count_cost_2024, "\n")
 cat("2025 no pricing strategies :", count_cost_2025, "\n")
 
 
+###### 34) Which one of the following grain-marketing resources do you rely on the most? ######
+resource_counts <- table(surveyhistory$`Which one of the following resources do you rely on the most?Select one.`)
+resource_counts <- as.data.frame(resource_counts)
+colnames(resource_counts) <- c("resource", "count")
+resource_counts <- resource_counts[resource_counts$resource != "na", ]
+resource_counts <- resource_counts[order(-resource_counts$count), ]
+
+ggplot(resource_counts, aes(x = reorder(resource, -count), y = count)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = count), vjust = -0.3, size = 4) +
+  labs(title = "Which grain-marketing resource do you rely on most?",
+       x = "Resource",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+surveyhistory$resource <- NA
+
+surveyhistory$resource[
+  surveyhistory$`Which one of the following resources do you rely on the most?Select one.` %in% 
+    c("Other - Write In")
+] <- "na"
+
+surveyhistory$resource[
+  surveyhistory$`Which one of the following resources do you rely on the most?Select one.` %in% 
+    c("Marketing advisor", "Feedback from marketing advisor")
+] <- "marketing_advisor"
+
+surveyhistory$resource[
+  surveyhistory$`Which one of the following resources do you rely on the most?Select one.` == "Agronomist"
+] <- "agronomist"
+
+surveyhistory$resource[
+  surveyhistory$`Which one of the following resources do you rely on the most?Select one.` %in% 
+    c("Local grain buyer", "Check with multiple buyers", "Trusted grain buyer")
+] <- "local_grain_buyer"
+
+surveyhistory$resource[
+  surveyhistory$`Which one of the following resources do you rely on the most?Select one.` %in% 
+    c("Subscription market advisory service", "Subscription to market advisory news")
+] <- "subscription"
+
+surveyhistory$resource[
+  surveyhistory$`Which one of the following resources do you rely on the most?Select one.` == "Email newsletters"
+] <- "email"
+
+surveyhistory$resource[
+  surveyhistory$`Which one of the following resources do you rely on the most?Select one.` == "Online peer group or social media"
+] <- "online_group"
+
+surveyhistory$resource[
+  surveyhistory$`Which one of the following resources do you rely on the most?Select one.` %in% 
+    c("Local peers", "Peer group")
+] <- "local_peers"
+
+surveyhistory$resource[
+  surveyhistory$`Which one of the following resources do you rely on the most?Select one.` == "Radio/TV"
+] <- "radio_tv"
+
+surveyhistory$resource[
+  surveyhistory$`Which one of the following resources do you rely on the most?Select one.` == "Farming-related magazines"
+] <- "magazines"
+
+surveyhistory$resource[
+  surveyhistory$`Which one of the following resources do you rely on the most?Select one.` == "Podcasts"
+] <- "podcasts"
+
+surveyhistory$resource[
+  surveyhistory$`Which one of the following resources do you rely on the most?Select one.` == "University"
+] <- "university"
+
+surveyhistory$resource[
+  is.na(surveyhistory$`Which one of the following resources do you rely on the most?Select one.`)
+] <- "na"
+
+# table(surveyhistory$Year[surveyhistory$resource != "na" & !is.na(surveyhistory$resource)])
+table(surveyhistory$Year[surveyhistory$resource != "na" ])
+
+resource_counts <- table(surveyhistory$resource)
+resource_counts <- as.data.frame(resource_counts)
+colnames(resource_counts) <- c("resource", "count")
+resource_counts <- resource_counts[resource_counts$resource != "na", ]
+resource_counts <- resource_counts[order(-resource_counts$count), ]
+
+ggplot(resource_counts, aes(x = reorder(resource, -count), y = count)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Count of Each Grain-Marketing Resource",
+       x = "Resource",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+for (cat in unique(surveyhistory$resource)) {
+  colname <- paste0("resource_", cat)
+  surveyhistory[[colname]] <- ifelse(surveyhistory$resource == cat, 1, 0)
+}
+
+###### 36) Do you leave open orders with your grain buyers? ######
+unique(surveyhistory$`Do you leave open orders with your grain buyers? (Submit firm offers above the current cash market bid in hopes of the order being filled in the future.)Select one.`)
+surveyhistory$openorder <- ifelse(
+  is.na(surveyhistory$`Do you leave open orders with your grain buyers? (Submit firm offers above the current cash market bid in hopes of the order being filled in the future.)Select one.`),
+  -1,
+  ifelse(
+    surveyhistory$`Do you leave open orders with your grain buyers? (Submit firm offers above the current cash market bid in hopes of the order being filled in the future.)Select one.` == "Yes",
+    1,
+    0
+  )
+)
+
+surveyhistory %>%
+  filter(Year %in% c(2023, 2024, 2025)) %>%
+  group_by(Year) %>%
+  summarise(
+    total = n(),
+    valid = sum(openorder %in% c(0, 1), na.rm = TRUE)
+  )
+
 
 ############ 2.Ordered Logistic Regression ############
 model_data <- surveyhistory %>%
@@ -269,16 +399,334 @@ model_data <- surveyhistory %>%
          "Age18-30", "Age31-40", "Age41-50", "Age51-60", "Age61-70", "Age71-80", "AgeOlder than 80", "AgeMissing",
          "AcreFewer than 500 acres", "Acre500-1999 acres", "Acre2000-4999 acres", "Acre5000-9999 acres", "Acre10,000 or more acres", "AcreMissing",
          Managed_pricing, Spot_cash, Futures_hedge, Production_contract, Store_later, Lock, HTA_contract, Basis_contract, Options, Forward_cash_contract,
+         hedge,
          seasonal_price, see_profit, harvest, need_cash, advisor, increments, technical_analysis, home_run, opportunity_arises,
          cost_accountant, cost_lender, cost_advisory, cost_software, cost_spreadsheet, cost_budgets,
-         understanding_cost, use_cost, accrual_adjusted_accounting, documented_marketing_plan) %>%
+         understanding_cost, use_cost, accrual_adjusted_accounting, documented_marketing_plan,
+         resource_na,resource_marketing_advisor,resource_agronomist,resource_local_grain_buyer,resource_subscription,resource_email,resource_online_group,resource_local_peers,resource_radio_tv,resource_magazines,resource_podcasts,resource_university,
+         openorder
+         ) %>%
   filter(complete.cases(.))
+
+year_counts <- model_data %>%
+  filter(Year %in% c(2023, 2024, 2025)) %>%
+  group_by(Year) %>%
+  summarise(Count = n()) %>%
+  arrange(Year)
+print(year_counts)
+
+# data count  
+model_data %>%
+  summarise(across(
+    c(`Age18-30`, `Age31-40`, `Age41-50`, `Age51-60`, `Age61-70`, `Age71-80`, `AgeOlder than 80`),
+    sum
+  ))
+
+model_data %>%
+  summarise(across(
+    c(`AcreFewer than 500 acres`,
+      `Acre500-1999 acres`,
+      `Acre2000-4999 acres`,
+      `Acre5000-9999 acres`,
+      `Acre10,000 or more acres`),
+    sum
+  ))
+
+# plot -- age & satisfy
+age_labels <- c(
+  "Age18-30", "Age31-40", "Age41-50", "Age51-60",
+  "Age61-70", "Age71-80", "AgeOlder than 80"
+)
+
+model_data_long <- model_data %>%
+  pivot_longer(cols = all_of(age_labels), names_to = "AgeGroup", values_to = "is_in_group") %>%
+  filter(is_in_group == 1) %>%
+  select(satisfy, AgeGroup)
+
+satisfy_counts <- model_data_long %>%
+  group_by(AgeGroup, satisfy) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  group_by(AgeGroup) %>%
+  mutate(Percent = Count / sum(Count) * 100)
+
+# pie chart 
+#ggplot(satisfy_counts, aes(x = "", y = Percent, fill = factor(satisfy))) +
+#  geom_col(width = 1, color = "white") +
+#  coord_polar("y") +
+#  facet_wrap(~ AgeGroup, ncol = 3) +
+#  theme_void() +
+#  labs(title = "Satisfaction Distribution by Age Group",
+#       fill = "Satisfaction Level")
+
+# hist 1
+#ggplot(satisfy_counts, aes(x = AgeGroup, y = Count, fill = factor(satisfy))) +
+#  geom_bar(stat = "identity", position = "dodge") +
+#  labs(title = "Satisfaction Levels by Age Group (Grouped)",
+#       x = "Age Group", y = "Number of Respondents",
+#       fill = "Satisfaction Level") +
+#  theme_minimal() +
+#  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# hist 2
+ggplot(satisfy_counts, aes(x = AgeGroup, y = Count, fill = factor(satisfy))) +
+  geom_bar(stat = "identity") +
+  labs(title = "Satisfaction Levels by Age Group",
+       x = "Age Group", y = "Number of Respondents",
+       fill = "Satisfaction Level") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# plot -- age & resource & satisf Stacked Bar Chart
+age_vars <- c("Age18-30", "Age31-40", "Age41-50", "Age51-60", "Age61-70", "Age71-80", "AgeOlder than 80")
+resource_vars <- c("resource_na", "resource_marketing_advisor", "resource_agronomist", 
+                   "resource_local_grain_buyer", "resource_subscription", "resource_email", 
+                   "resource_online_group", "resource_local_peers", "resource_radio_tv", 
+                   "resource_magazines", "resource_podcasts", "resource_university")
+
+data_long <- model_data %>%
+  pivot_longer(cols = all_of(age_vars), names_to = "AgeGroup", values_to = "is_age") %>%
+  filter(is_age == 1) %>%
+  select(satisfy, AgeGroup, all_of(resource_vars)) %>%
+  pivot_longer(cols = all_of(resource_vars), names_to = "Resource", values_to = "Used") %>%
+  filter(Used == 1)
+
+resource_satisfy_count <- data_long %>%
+  group_by(Resource, AgeGroup, satisfy) %>%
+  summarise(Count = n(), .groups = "drop")
+
+ggplot(resource_satisfy_count, aes(x = AgeGroup, y = Count, fill = factor(satisfy))) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~ Resource, scales = "free_y") +
+  labs(title = "Satisfaction Levels by Age Group and Resource (Stacked Bar Chart)",
+       x = "Age Group", y = "Number of Respondents", fill = "Satisfaction") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# plot -- farm size & satisfy
+acre_labels <- c(
+  "AcreFewer than 500 acres",
+  "Acre500-1999 acres",
+  "Acre2000-4999 acres",
+  "Acre5000-9999 acres",
+  "Acre10,000 or more acres"
+)
+
+model_data_long_acre <- model_data %>%
+  pivot_longer(cols = all_of(acre_labels), names_to = "AcreGroup", values_to = "is_in_group") %>%
+  filter(is_in_group == 1) %>%
+  select(satisfy, AcreGroup)
+
+satisfy_counts_acre <- model_data_long_acre %>%
+  group_by(AcreGroup, satisfy) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  group_by(AcreGroup) %>%
+  ungroup() %>%
+  mutate(AcreGroup = factor(AcreGroup, levels = acre_labels))
+
+ggplot(satisfy_counts_acre, aes(x = AcreGroup, y = Count, fill = factor(satisfy))) +
+  geom_bar(stat = "identity") +
+  labs(title = "Satisfaction Levels by Acre Group",
+       x = "Acre Group", y = "Number of Respondents",
+       fill = "Satisfaction Level") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ## count valid observation 
 model_data %>%
   group_by(Year) %>%
   summarise(valid_count = n()) %>%
   arrange(Year)
+
+#### stage 1 
+model_data$Year <- as.factor(model_data$Year)
+model_data$Year <- relevel(model_data$Year, ref = "2023")  
+model_data_happy <- model_data %>%
+  select(Year,satisfy, understanding_cost, hedge, openorder) 
+model_happy <- polr(
+  satisfy ~ Year + understanding_cost + hedge + openorder,
+  data = model_data_happy,
+  Hess = TRUE
+)
+summary(model_happy)
+
+model_data_happiness <- model_data %>%
+  select(Year, satisfy,
+         "Age18-30", "Age31-40", "Age41-50", "Age51-60", "Age61-70", "Age71-80", "AgeOlder than 80", "AgeMissing",
+         "AcreFewer than 500 acres", "Acre500-1999 acres", "Acre2000-4999 acres", "Acre5000-9999 acres", "Acre10,000 or more acres", "AcreMissing",
+         understanding_cost, hedge, openorder) 
+model_happiness <-polr(satisfy ~., data = model_data_happiness,Hess = TRUE)
+summary(model_happiness)
+
+#### stage 2 logistic regression
+model_cop <- glm(
+  understanding_cost ~ 
+    cost_accountant + cost_lender + cost_advisory + cost_software + cost_spreadsheet + cost_budgets +
+    `Age18-30` + `Age31-40` + `Age41-50` + `Age51-60` + `Age71-80` + `AgeOlder than 80` + `Age61-70` + AgeMissing +
+    `Acre500-1999 acres` + `Acre2000-4999 acres` + `Acre5000-9999 acres` + `Acre10,000 or more acres` + `AcreFewer than 500 acres` + AcreMissing,
+  data = model_data,
+  family = binomial(link = "logit")
+)
+summary(model_cop)
+
+model_hedge <- glm(
+   hedge ~ 
+     resource_na + resource_marketing_advisor + resource_agronomist + resource_subscription + resource_email + resource_online_group +
+     resource_local_peers + resource_radio_tv + resource_magazines + resource_university + resource_podcasts + resource_local_grain_buyer +
+    `Age18-30` + `Age31-40` + `Age41-50` + `Age51-60` + `Age71-80` + `AgeOlder than 80`+ `Age61-70` + AgeMissing +
+     `Acre500-1999 acres` + `Acre2000-4999 acres` + `Acre5000-9999 acres` + `Acre10,000 or more acres` + AcreMissing + `AcreFewer than 500 acres`,
+  data = model_data,
+  family = binomial(link = "logit")
+)
+summary(model_hedge)
+
+model_data_openorder <- model_data %>%
+  filter(openorder != -1)
+model_openorder <- glm(
+  openorder ~ 
+     resource_na + resource_marketing_advisor + resource_agronomist + resource_subscription + resource_email + resource_online_group +
+     resource_local_peers + resource_radio_tv + resource_magazines + resource_university + resource_podcasts + resource_local_grain_buyer +
+    `Age18-30` + `Age31-40` + `Age41-50` + `Age51-60` + `Age71-80` + `AgeOlder than 80` + `Age61-70` + AgeMissing +
+    `Acre500-1999 acres` + `Acre2000-4999 acres` + `Acre5000-9999 acres` + `Acre10,000 or more acres` + AcreMissing  +`AcreFewer than 500 acres` ,
+  data = model_data_openorder,
+  family = binomial(link = "logit")
+)
+summary(model_openorder)
+
+# plot - understanding cost $ cost tool $ satisfy
+cost_understanding <- model_data %>%
+  filter(understanding_cost == 1) %>%
+  select(satisfy, 
+         cost_accountant, cost_lender, cost_advisory, cost_software, cost_spreadsheet, cost_budgets) %>%
+  mutate(id = row_number()) %>%
+  pivot_longer(cols = starts_with("cost_"), names_to = "cost_type", values_to = "used") %>%
+  filter(used == 1) %>%
+  group_by(cost_type, satisfy) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  mutate(cost_label = gsub("cost_", "", cost_type))
+
+ggplot(cost_understanding, aes(x = cost_label, y = count, fill = factor(satisfy))) +
+  geom_bar(stat = "identity") +
+  labs(title = "Cost Calculation Tools and Satisfaction Level 
+  among Farmers who Understanding Cost Well",
+       x = "Cost Calculation Tool Type",
+       y = "Number of farmers",
+       fill = "satisfaction level") +
+  theme_minimal() 
+
+
+
+
+
+
+
+
+
+
+
+# plot - information resource $ hedge/open order 
+resource_cols <- c(
+  "resource_na", "resource_marketing_advisor", "resource_agronomist", "resource_local_grain_buyer",
+  "resource_subscription", "resource_email", "resource_online_group", "resource_local_peers",
+  "resource_radio_tv", "resource_magazines", "resource_podcasts", "resource_university"
+)
+
+# hedge
+resource_hedge <- model_data %>%
+  filter(hedge == 1) %>%
+  select(satisfy, all_of(resource_cols)) %>%
+  mutate(id = row_number()) %>%
+  pivot_longer(cols = all_of(resource_cols), names_to = "resource_type", values_to = "used") %>%
+  filter(used == 1) %>%
+  group_by(resource_type, satisfy) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  mutate(resource_label = gsub("resource_", "", resource_type))
+
+ggplot(resource_hedge, aes(x = resource_label, y = count, fill = factor(satisfy))) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Resource Tools and Satisfaction Level\namong Farmers who Use Hedging",
+    x = "Resource Tool Type",
+    y = "Number of Farmers",
+    fill = "Satisfaction Level"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# open order
+resource_open_order <- model_data %>%
+  filter(openorder == 1) %>%
+  select(satisfy, all_of(resource_cols)) %>%
+  mutate(id = row_number()) %>%
+  pivot_longer(cols = all_of(resource_cols), names_to = "resource_type", values_to = "used") %>%
+  filter(used == 1) %>%
+  group_by(resource_type, satisfy) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  mutate(resource_label = gsub("resource_", "", resource_type))
+
+ggplot(resource_open_order, aes(x = resource_label, y = count, fill = factor(satisfy))) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Resource Tools and Satisfaction Level\namong Farmers who Use Open Orders",
+    x = "Resource Tool Type",
+    y = "Number of Farmers",
+    fill = "Satisfaction Level"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# together 
+resource_cols <- c(
+  "resource_na", "resource_marketing_advisor", "resource_agronomist", "resource_local_grain_buyer",
+  "resource_subscription", "resource_email", "resource_online_group", "resource_local_peers",
+  "resource_radio_tv", "resource_magazines", "resource_podcasts", "resource_university"
+)
+
+long_data <- model_data %>%
+  select(satisfy, hedge, openorder, all_of(resource_cols)) %>%
+  pivot_longer(cols = all_of(resource_cols), names_to = "resource", values_to = "used") %>%
+  filter(used == 1) %>%
+  mutate(resource = gsub("resource_", "", resource))  
+
+hedge_data <- long_data %>%
+  filter(hedge == 1) %>%
+  mutate(category = "Hedge")
+
+openorder_data <- long_data %>%
+  filter(openorder == 1) %>%
+  mutate(category = "Open Order")
+
+combined_data <- bind_rows(hedge_data, openorder_data)
+
+plot_data <- combined_data %>%
+  group_by(resource, satisfy, category) %>%
+  summarise(count = n(), .groups = "drop")
+
+ggplot(plot_data, aes(x = resource, y = count, fill = factor(satisfy))) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~ category) +
+  labs(title = "Use of Marketing Resources by Satisfaction Level",
+       subtitle = "Among Farmers who used Hedge or Open Order",
+       x = "Resource Type",
+       y = "Number of Farmers",
+       fill = "Satisfaction Level") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## Summary of variable - understand cost
 understandcost_data <- model_data %>%
@@ -380,10 +828,12 @@ model_data_total <-model_data %>% select(-Year)
 r <- polr(satisfy ~ ., data = model_data_total, Hess = TRUE)
 summary(r)
 
+
+
 ## year dummy with 2023 baseline 
 model_data$Year <- as.factor(model_data$Year)
 model_data$Year <- relevel(model_data$Year, ref = "2023")  
-model_data_withoutcostcalculation <-model_data %>% select(-cost_accountant, -cost_lender, -cost_advisory, -cost_software, -cost_spreadsheet, -cost_budgets)
+#model_data_withoutcostcalculation <-model_data %>% select(-cost_accountant, -cost_lender, -cost_advisory, -cost_software, -cost_spreadsheet, -cost_budgets)
 r_dummy <- polr(satisfy ~ . + Year, data = model_data_withoutcostcalculation, Hess = TRUE)
 summary(r_dummy)
 
