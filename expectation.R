@@ -1,0 +1,835 @@
+########## expecatation project ##########
+library(readxl)
+library(timeDate)
+library(dplyr)
+library(lubridate)
+library(purrr)
+library(nnet)
+library(MASS)
+
+# survey data #
+dat <- read_excel(file.choose())  # NOTE: input the survey data by manual selection 
+dat <- dat %>%
+  mutate(tradingDay = as.Date(Date, format = "%y%m%d")) %>%
+  select(-Date,-`Est GFI`,-`GFI Score`,-CSS_CellCode,-CSS_BadNpaNxx)
+
+# ======================
+# price contract data #
+# ======================
+# NOTE: change the path of contract data 
+# cash contract
+Corn <- read.csv("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data /Data/cash contract/Corn_Y00.csv")
+Cotton <- read.csv("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data /Data/cash contract/Cotton_Y00.csv")
+Hogs <- read.csv("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data /Data/cash contract/Lean_Hogs_Y00.csv")
+Cattle <- read.csv("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data /Data/cash contract/Live_Cattle_Y00.csv")
+Soybeans <- read.csv("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data /Data/cash contract/Soybeans_Y00.csv")
+Wheat <- read.csv("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data /Data/cash contract/Wheat_Y00.csv")
+
+Corn <- Corn %>%
+  mutate(tradingDay = as.Date(tradingDay)) %>%
+  rename(#corn_open = open,
+         #corn_high = high,
+         #corn_low = low,
+         corn = close) %>%
+  select(-symbol,-timestamp,-open,-high,-low,-volume,-openInterest) %>%
+  mutate(
+    # corn_open_1 = lag(corn_open,1),
+    # corn_high_1 = lag(corn_high,1),
+    # corn_low_1 = lag(corn_low,1),
+    corn_1 = lag(corn,1),
+    
+    # corn_open_2 = lag(corn_open,2),
+    # corn_high_2 = lag(corn_high,2),
+    # corn_low_2 = lag(corn_low,2),
+    corn_2 = lag(corn,2),
+    
+    # corn_open_3 = lag(corn_open,3),
+    # corn_high_3 = lag(corn_high,3),
+    # corn_low_3 = lag(corn_low,3),
+    corn_3 = lag(corn,3),
+    
+    # corn_open_4 = lag(corn_open,4),
+    # corn_high_4 = lag(corn_high,4),
+    # corn_low_4 = lag(corn_low,4),
+    corn_4 = lag(corn,4),
+    
+    # corn_open_5 = lag(corn_open,5),
+    # corn_high_5 = lag(corn_high,5),
+    # corn_low_5 = lag(corn_low,5),
+    corn_5 = lag(corn,5),
+    
+    # corn_open_6 = lag(corn_open,6),
+    # corn_high_6 = lag(corn_high,6),
+    # corn_low_6 = lag(corn_low,6),
+    corn_6 = lag(corn,6),
+         )
+
+Cotton <- Cotton %>%
+  mutate(tradingDay = mdy(Date)) %>%
+  rename(#cotton_open = open,
+         #cotton_high = high,
+         #cotton_low = low,
+         cotton = close) %>%
+  select(-symbol,-Date,-open,-high,-low) %>%
+  mutate(
+    # cotton_open_1 = lag(cotton_open,1),
+    # cotton_high_1 = lag(cotton_high,1),
+    # cotton_low_1 = lag(cotton_low,1),
+    cotton_1 = lag(cotton,1),
+    
+    # cotton_open_2 = lag(cotton_open,2),
+    # cotton_high_2 = lag(cotton_high,2),
+    # cotton_low_2 = lag(cotton_low,2),
+    cotton_2 = lag(cotton,2),
+    
+    # cotton_open_3 = lag(cotton_open,3),
+    # cotton_high_3 = lag(cotton_high,3),
+    # cotton_low_3 = lag(cotton_low,3),
+    cotton_3 = lag(cotton,3),
+    
+    # cotton_open_4 = lag(cotton_open,4),
+    # cotton_high_4 = lag(cotton_high,4),
+    # cotton_low_4 = lag(cotton_low,4),
+    cotton_4 = lag(cotton,4),
+    
+    # cotton_open_5 = lag(cotton_open,5),
+    # cotton_high_5 = lag(cotton_high,5),
+    # cotton_low_5 = lag(cotton_low,5),
+    cotton_5 = lag(cotton,5),
+    
+    # cotton_open_6 = lag(cotton_open,6),
+    # cotton_high_6 = lag(cotton_high,6),
+    # cotton_low_6 = lag(cotton_low,6),
+    cotton_6 = lag(cotton,6),
+  )
+
+Hogs <- Hogs %>%
+  mutate(tradingDay = as.Date(tradingDay)) %>%
+  rename(#hogs_open = open,
+         #hogs_high = high,
+         #hogs_low = low,
+         hogs = close) %>%
+  select(-symbol,-timestamp,-open,-high,-low,-volume,-openInterest) %>%
+  mutate(
+    # hogs_open_1 = lag(hogs_open,1),
+    # hogs_high_1 = lag(hogs_high,1),
+    # hogs_low_1 = lag(hogs_low,1),
+    hogs_1 = lag(hogs,1),
+    
+    # hogs_open_2 = lag(hogs_open,2),
+    # hogs_high_2 = lag(hogs_high,2),
+    # hogs_low_2 = lag(hogs_low,2),
+    hogs_2 = lag(hogs,2),
+    
+    # hogs_open_3 = lag(hogs_open,3),
+    # hogs_high_3 = lag(hogs_high,3),
+    # hogs_low_3 = lag(hogs_low,3),
+    hogs_3 = lag(hogs,3),
+  
+    # hogs_open_4 = lag(hogs_open,4),
+    # hogs_high_4 = lag(hogs_high,4),
+    # hogs_low_4 = lag(hogs_low,4),
+    hogs_4 = lag(hogs,4),
+    
+    # hogs_open_5 = lag(hogs_open,5),
+    # hogs_high_5 = lag(hogs_high,5),
+    # hogs_low_5 = lag(hogs_low,5),
+    hogs_5 = lag(hogs,5),
+    
+    # hogs_open_6 = lag(hogs_open,6),
+    # hogs_high_6 = lag(hogs_high,6),
+    # hogs_low_6 = lag(hogs_low,6),
+    hogs_6 = lag(hogs,6),
+  )
+
+Cattle <- Cattle %>%
+  mutate(tradingDay = as.Date(tradingDay)) %>%
+  rename(#cattle_open = open,
+         #cattle_high = high,
+         #cattle_low = low,
+         cattle = close) %>%
+  select(-symbol,-timestamp,-open,-high,-low,-volume,-openInterest) %>%
+  mutate(
+    # cattle_open_1 = lag(cattle_open,1),
+    # cattle_high_1 = lag(cattle_high,1),
+    # cattle_low_1 = lag(cattle_low,1),
+    cattle_1 = lag(cattle,1),
+    
+    # cattle_open_2 = lag(cattle_open,2),
+    # cattle_high_2 = lag(cattle_high,2),
+    # cattle_low_2 = lag(cattle_low,2),
+    cattle_2 = lag(cattle,2),
+    
+    # cattle_open_3 = lag(cattle_open,3),
+    # cattle_high_3 = lag(cattle_high,3),
+    # cattle_low_3 = lag(cattle_low,3),
+    cattle_3 = lag(cattle,3),
+    
+    # cattle_open_4 = lag(cattle_open,4),
+    # cattle_high_4 = lag(cattle_high,4),
+    # cattle_low_4 = lag(cattle_low,4),
+    cattle_4 = lag(cattle,4),
+    
+    # cattle_open_5 = lag(cattle_open,5),
+    # cattle_high_5 = lag(cattle_high,5),
+    # cattle_low_5 = lag(cattle_low,5),
+    cattle_5 = lag(cattle,5),
+    
+    # cattle_open_6 = lag(cattle_open,6),
+    # cattle_high_6 = lag(cattle_high,6),
+    # cattle_low_6 = lag(cattle_low,6),
+    cattle_6 = lag(cattle,6),
+  ) 
+  
+Soybeans <- Soybeans %>%
+  mutate(tradingDay = as.Date(tradingDay)) %>%
+  rename(#soybeans_open = open,
+         #soybeans_high = high,
+         #soybeans_low = low,
+         soybeans = close) %>%
+  select(-symbol,-timestamp,-open,-high,-low,-volume,-openInterest) %>%
+  mutate(
+    # soybeans_open_1 = lag(soybeans_open,1),
+    # soybeans_high_1 = lag(soybeans_high,1),
+    # soybeans_low_1 = lag(soybeans_low,1),
+    soybeans_1 = lag(soybeans,1),
+    
+    # soybeans_open_2 = lag(soybeans_open,2),
+    # soybeans_high_2 = lag(soybeans_high,2),
+    # soybeans_low_2 = lag(soybeans_low,2),
+    soybeans_2 = lag(soybeans,2),
+    
+    # soybeans_open_3 = lag(soybeans_open,3),
+    # soybeans_high_3 = lag(soybeans_high,3),
+    # soybeans_low_3 = lag(soybeans_low,3),
+    soybeans_3 = lag(soybeans,3),
+    
+    # soybeans_open_4 = lag(soybeans_open,4),
+    # soybeans_high_4 = lag(soybeans_high,4),
+    # soybeans_low_4 = lag(soybeans_low,4),
+    soybeans_4 = lag(soybeans,4),
+    
+    # soybeans_open_5 = lag(soybeans_open,5),
+    # soybeans_high_5 = lag(soybeans_high,5),
+    # soybeans_low_5 = lag(soybeans_low,5),
+    soybeans_5 = lag(soybeans,5),
+    
+    # soybeans_open_6 = lag(soybeans_open,6),
+    # soybeans_high_6 = lag(soybeans_high,6),
+    # soybeans_low_6 = lag(soybeans_low,6),
+    soybeans_6 = lag(soybeans,6),
+  ) 
+
+Wheat <- Wheat %>%
+  mutate(tradingDay = as.Date(tradingDay)) %>%
+  rename(#wheat_open = open,
+         #wheat_high = high,
+         #wheat_low = low,
+         wheat = close) %>%
+  select(-symbol,-timestamp,-open,-high,-low,-volume,-openInterest)  %>%
+  mutate(
+    # wheat_open_1 = lag(wheat_open,1),
+    # wheat_high_1 = lag(wheat_high,1),
+    # wheat_low_1 = lag(wheat_low,1),
+    wheat_1 = lag(wheat,1),
+    
+    # wheat_open_2 = lag(wheat_open,2),
+    # wheat_high_2 = lag(wheat_high,2),
+    # wheat_low_2 = lag(wheat_low,2),
+    wheat_2 = lag(wheat,2),
+    
+    # wheat_open_3 = lag(wheat_open,3),
+    # wheat_high_3 = lag(wheat_high,3),
+    # wheat_low_3 = lag(wheat_low,3),
+    wheat_3 = lag(wheat,3),
+    
+    # wheat_open_4 = lag(wheat_open,4),
+    # wheat_high_4 = lag(wheat_high,4),
+    # wheat_low_4 = lag(wheat_low,4),
+    wheat_4 = lag(wheat,4),
+    
+    # wheat_open_5 = lag(wheat_open,5),
+    # wheat_high_5 = lag(wheat_high,5),
+    # wheat_low_5 = lag(wheat_low,5),
+    wheat_5 = lag(wheat,5),
+    
+    # wheat_open_6 = lag(wheat_open,6),
+    # wheat_high_6 = lag(wheat_high,6),
+    # wheat_low_6 = lag(wheat_low,6),
+    wheat_6 = lag(wheat,6),
+  )  
+
+# ============
+# future data 
+# ============
+ag_future <- read_excel(file.choose())   # NOTE: input the survey data by manual selection 
+Cotton_future <- read.csv(file.choose())
+Hog_future <- read.csv(file.choose())
+Cattle_future <- read.csv(file.choose())
+
+Corn_future <- ag_future %>%
+  mutate(tradingDay = as.Date(Date)) %>%
+  rename(corn_future = corn_price) %>%
+  select(-Date,-soybean_price,-soybean_return,-wheat_price,-wheat_return) %>%
+  mutate(
+    corn_future_1 = lag(corn_future,1),
+    corn_return_1 = lag(corn_return,1),
+    corn_future_2 = lag(corn_future,2),
+    corn_return_2 = lag(corn_return,2),
+    corn_future_3 = lag(corn_future,3),
+    corn_return_3 = lag(corn_return,3),
+    corn_future_4 = lag(corn_future,4),
+    corn_return_4 = lag(corn_return,4),
+    corn_future_5 = lag(corn_future,5),
+    corn_return_5 = lag(corn_return,5),
+    corn_future_6 = lag(corn_future,6),
+    corn_return_6 = lag(corn_return,6)
+  )
+
+Soybeans_future <- ag_future %>%
+  mutate(tradingDay = as.Date(Date)) %>%
+  rename(soybeans_future = soybean_price) %>%
+  select(-Date,-corn_price,-corn_return,-wheat_price,-wheat_return) %>%
+  mutate(
+    soybeans_future_1 = lag(soybeans_future,1),
+    soybeans_return_1 = lag(soybean_return,1),
+    soybeans_future_2 = lag(soybeans_future,2),
+    soybeans_return_2 = lag(soybean_return,2),
+    soybeans_future_3 = lag(soybeans_future,3),
+    soybeans_return_3 = lag(soybean_return,3),
+    soybeans_future_4 = lag(soybeans_future,4),
+    soybeans_return_4 = lag(soybean_return,4),
+    soybeans_future_5 = lag(soybeans_future,5),
+    soybeans_return_5 = lag(soybean_return,5),
+    soybeans_future_6 = lag(soybeans_future,6),
+    soybeans_return_6 = lag(soybean_return,6)
+  )
+
+Wheat_future <- ag_future %>%
+  mutate(tradingDay = as.Date(Date)) %>%
+  rename(wheat_future = wheat_price) %>%
+  select(-Date,-corn_price,-corn_return,-soybean_price,-soybean_return) %>%
+  mutate(
+    wheat_future_1 = lag(wheat_future,1),
+    wheat_return_1 = lag(wheat_return,1),
+    wheat_future_2 = lag(wheat_future,2),
+    wheat_return_2 = lag(wheat_return,2),
+    wheat_future_3 = lag(wheat_future,3),
+    wheat_return_3 = lag(wheat_return,3),
+    wheat_future_4 = lag(wheat_future,4),
+    wheat_return_4 = lag(wheat_return,4),
+    wheat_future_5 = lag(wheat_future,5),
+    wheat_return_5 = lag(wheat_return,5),
+    wheat_future_6 = lag(wheat_future,6),
+    wheat_return_6 = lag(wheat_return,6)
+  )
+
+Cotton_future <- Cotton_future  %>%
+  mutate(tradingDay = as.Date(Time)) %>%
+  rename(cotton_future = Last) %>%
+  rename(cotton_return = Returns) %>%
+  select(-Time,-CommodityCode,-ContractMonth,-YearCode,-Roll_Flag) %>%
+  mutate(
+    cotton_future_1 = lag(cotton_future,1),
+    cotton_return_1 = lag(cotton_return,1),
+    cotton_future_2 = lag(cotton_future,2),
+    cotton_return_2 = lag(cotton_return,2),
+    cotton_future_3 = lag(cotton_future,3),
+    cotton_return_3 = lag(cotton_return,3),
+    cotton_future_4 = lag(cotton_future,4),
+    cotton_return_4 = lag(cotton_return,4),
+    cotton_future_5 = lag(cotton_future,5),
+    cotton_return_5 = lag(cotton_return,5),
+    cotton_future_6 = lag(cotton_future,6),
+    cotton_return_6 = lag(cotton_return,6)
+  )
+
+Hogs_future <- Hog_future  %>%
+  mutate(tradingDay = as.Date(Time)) %>%
+  rename(hogs_future = Last) %>%
+  rename(hogs_return = Returns) %>%
+  select(-Time,-CommodityCode,-ContractMonth,-YearCode,-Roll_Flag) %>%
+  mutate(
+    hogs_future_1 = lag(hogs_future,1),
+    hogs_return_1 = lag(hogs_return,1),
+    hogs_future_2 = lag(hogs_future,2),
+    hogs_return_2 = lag(hogs_return,2),
+    hogs_future_3 = lag(hogs_future,3),
+    hogs_return_3 = lag(hogs_return,3),
+    hogs_future_4 = lag(hogs_future,4),
+    hogs_return_4 = lag(hogs_return,4),
+    hogs_future_5 = lag(hogs_future,5),
+    hogs_return_5 = lag(hogs_return,5),
+    hogs_future_6 = lag(hogs_future,6),
+    hogs_return_6 = lag(hogs_return,6)
+  )
+
+Cattle_future <- Cattle_future  %>%
+  mutate(tradingDay = as.Date(Time)) %>%
+  rename(cattle_future = Last) %>%
+  rename(cattle_return = Returns) %>%
+  select(-Time,-CommodityCode,-ContractMonth,-YearCode,-Roll_Flag) %>%
+  mutate(
+    cattle_future_1 = lag(cattle_future,1),
+    cattle_return_1 = lag(cattle_return,1),
+    cattle_future_2 = lag(cattle_future,2),
+    cattle_return_2 = lag(cattle_return,2),
+    cattle_future_3 = lag(cattle_future,3),
+    cattle_return_3 = lag(cattle_return,3),
+    cattle_future_4 = lag(cattle_future,4),
+    cattle_return_4 = lag(cattle_return,4),
+    cattle_future_5 = lag(cattle_future,5),
+    cattle_return_5 = lag(cattle_return,5),
+    cattle_future_6 = lag(cattle_future,6),
+    cattle_return_6 = lag(cattle_return,6)
+  )
+
+# merge data 
+price_list <- list(Corn,Cotton,Hogs,Cattle,Soybeans,Wheat,Corn_future,Cotton_future,Hogs_future,Cattle_future,Soybeans_future,Wheat_future)
+dat_combined <- reduce(
+  list(Corn,Cotton,Hogs,Cattle,Soybeans,Wheat,Corn_future,Cotton_future,Hogs_future,Cattle_future,Soybeans_future,Wheat_future),
+  ~ left_join(.x, .y, by = "tradingDay"),
+  .init = dat
+)
+write.csv(dat_combined, "dat_combined.csv", row.names = FALSE) # NOTE:change the save path if you need 
+
+# =============================================
+# survey corn/soybean future price expectation 
+# =============================================
+nrow(dat_combined)
+table(dat_combined$corn_future_exceed)
+table(dat_combined$corn_future_below)
+table(dat_combined$soybean_future_exceed)
+table(dat_combined$soybean_future_below)
+
+# Do you think July 2020 corn futures prices will exceed $4.50 per bushel, between now and July 1? Yes or No?
+#	Do you think July 2020 corn futures prices will fall below $3.50 per bushel between now and July 1? Yes or No?
+
+# 0: A-A uncertain with big change
+# 1: A-B / A-C up
+# 2: C-B / B-B / C-C / B-C uncertain
+# 3: C-A / B-A down
+table(dat_combined$corn_future_exceed, dat_combined$corn_future_below)
+table(dat_combined$soybean_future_exceed, dat_combined$soybean_future_below)
+dat_combined <- dat_combined %>%
+  mutate(corn_future_exp = case_when(
+    corn_future_exceed == "A" & corn_future_below == "A" ~ 0,
+    corn_future_exceed == "A" & corn_future_below %in% c("B", "C") ~ 1,
+    corn_future_exceed == "B" & corn_future_below == "A" ~ 3,
+    corn_future_exceed == "C" & corn_future_below == "A" ~ 3,
+    corn_future_exceed %in% c("B", "C") & corn_future_below %in% c("B", "C") ~ 2),
+    soybean_future_exp = case_when(
+    soybean_future_exceed == "A" & soybean_future_below == "A" ~ 0,
+    soybean_future_exceed == "A" & soybean_future_below %in% c("B", "C") ~ 1,
+    soybean_future_exceed == "B" & soybean_future_below == "A" ~ 3,
+    soybean_future_exceed == "C" & soybean_future_below == "A" ~ 3,
+    soybean_future_exceed %in% c("B", "C") & soybean_future_below %in% c("B", "C") ~ 2)
+  )
+table(dat_combined$corn_future_exp, useNA = "ifany")
+table(dat_combined$soybean_future_exp, useNA = "ifany")
+
+dat_combined$corn_future_exp <- factor(dat_combined$corn_future_exp)
+dat_combined$soybean_future_exp <- factor(dat_combined$soybean_future_exp)
+
+# generate time series of agricultural products with the rate of change of price
+commodities <- c("corn", "cotton", "hogs", "cattle", "soybeans", "wheat","corn_future", "cotton_future", "hogs_future", "cattle_future", "soybeans_future", "wheat_future")
+for (var in commodities) {
+  delta_name <- paste0("delta_", var, "_1")
+  dat_combined[[delta_name]] <- (dat_combined[[var]] - dat_combined[[paste0(var, "_1")]]) / dat_combined[[paste0(var, "_1")]]
+  
+  for (k in 2:6) {
+    delta_k_name <- paste0("delta_", var, "_", k)
+    var_1 <- paste0(var, "_1")
+    var_k <- paste0(var, "_", k)
+    dat_combined[[delta_k_name]] <- (dat_combined[[var_1]] - dat_combined[[var_k]]) / dat_combined[[var_k]]
+  }
+}
+
+# Create a month_year fixed-effect variable
+dat_combined$month_year <- format(dat_combined$tradingDay, "%Y-%m")
+dat_combined$month_year <- factor(dat_combined$month_year,
+                                  levels = sort(unique(dat_combined$month_year)))
+
+# ==================================================
+# multinominal logistic regression for cash contract 
+# ==================================================
+# Each historical period has an equal share
+# short term model: use one lag differences
+model_corn_short <- multinom(
+   as.factor(corn_future_exp) ~ delta_corn_1 + delta_soybeans_1 + delta_cotton_1 + delta_hogs_1 + delta_cattle_1 + delta_wheat_1 + factor(month_year),
+   data = dat_combined
+  )
+summary(model_corn_short)
+
+model_soybean_short <- multinom(
+  as.factor(soybean_future_exp) ~ delta_corn_1 + delta_soybeans_1 + delta_cotton_1 + delta_hogs_1 + delta_cattle_1 + delta_wheat_1 + factor(month_year),
+  data = dat_combined
+)
+summary(model_soybean_short )
+
+# long-term model: use multiple lag differences (1~6)
+model_corn_long <- multinom(
+  as.factor(corn_future_exp) ~ 
+    delta_corn_1 + delta_corn_2 + delta_corn_3 + delta_corn_4 + delta_corn_5 + delta_corn_6 +
+    delta_soybeans_1 + delta_soybeans_2 + delta_soybeans_3 + delta_soybeans_4 + delta_soybeans_5 + delta_soybeans_6 +
+    delta_cotton_1 + delta_cotton_2 + delta_cotton_3 + delta_cotton_4 + delta_cotton_5 + delta_cotton_6 +
+    delta_hogs_1 + delta_hogs_2 + delta_hogs_3 + delta_hogs_4 + delta_hogs_5 + delta_hogs_6 +
+    delta_cattle_1 + delta_cattle_2 + delta_cattle_3 + delta_cattle_4 + delta_cattle_5 + delta_cattle_6 +
+    delta_wheat_1 + delta_wheat_2 + delta_wheat_3 + delta_wheat_4 + delta_wheat_5 + delta_wheat_6 +
+    factor(month_year),
+  data = dat_combined
+)
+
+summary(model_corn_long)
+
+model_soybean_long <- multinom(
+  as.factor(soybean_future_exp) ~ 
+    delta_corn_1 + delta_corn_2 + delta_corn_3 + delta_corn_4 + delta_corn_5 + delta_corn_6 +
+    delta_soybeans_1 + delta_soybeans_2 + delta_soybeans_3 + delta_soybeans_4 + delta_soybeans_5 + delta_soybeans_6 +
+    delta_cotton_1 + delta_cotton_2 + delta_cotton_3 + delta_cotton_4 + delta_cotton_5 + delta_cotton_6 +
+    delta_hogs_1 + delta_hogs_2 + delta_hogs_3 + delta_hogs_4 + delta_hogs_5 + delta_hogs_6 +
+    delta_cattle_1 + delta_cattle_2 + delta_cattle_3 + delta_cattle_4 + delta_cattle_5 + delta_cattle_6 +
+    delta_wheat_1 + delta_wheat_2 + delta_wheat_3 + delta_wheat_4 + delta_wheat_5 + delta_wheat_6 +
+    factor(month_year),
+  data = dat_combined
+)
+
+summary(model_soybean_long)
+
+# yesterday VS moving average for history 
+dat_combined <- dat_combined %>%
+  mutate(
+    # Corn moving average from lag 2 to lag 6
+    delta_corn_MA = rowMeans(dplyr::select(., delta_corn_2, delta_corn_3, delta_corn_4, delta_corn_5, delta_corn_6), na.rm = TRUE),
+    # Soybeans moving average
+    delta_soy_MA = rowMeans(dplyr::select(., delta_soybeans_2, delta_soybeans_3, delta_soybeans_4, delta_soybeans_5, delta_soybeans_6), na.rm = TRUE),
+    # Cotton moving average
+    delta_cotton_MA = rowMeans(dplyr::select(., delta_cotton_2, delta_cotton_3, delta_cotton_4, delta_cotton_5, delta_cotton_6), na.rm = TRUE),
+    # Hogs moving average
+    delta_hogs_MA = rowMeans(dplyr::select(., delta_hogs_2, delta_hogs_3, delta_hogs_4, delta_hogs_5, delta_hogs_6), na.rm = TRUE),
+    # Cattle moving average
+    delta_cattle_MA = rowMeans(dplyr::select(., delta_cattle_2, delta_cattle_3, delta_cattle_4, delta_cattle_5, delta_cattle_6), na.rm = TRUE),
+    # Wheat moving average
+    delta_wheat_MA = rowMeans(dplyr::select(., delta_wheat_2, delta_wheat_3, delta_wheat_4, delta_wheat_5, delta_wheat_6), na.rm = TRUE)
+  )
+
+# long-term model: use multiple lag differences (1~6)
+model_corn_long_MA <- multinom(
+  as.factor(corn_future_exp) ~ 
+    delta_corn_1 + delta_corn_MA +
+    delta_soybeans_1 + delta_soy_MA +
+    delta_cotton_1 + delta_cotton_MA +
+    delta_hogs_1 + delta_hogs_MA +
+    delta_cattle_1 + delta_cattle_MA +
+    delta_wheat_1 + delta_wheat_MA +
+    factor(month_year),
+  data = dat_combined
+)
+summary(model_corn_long_MA)
+
+model_soybean_long_MA <- multinom(
+  as.factor(soybean_future_exp) ~ 
+    delta_corn_1 + delta_corn_MA +
+    delta_soybeans_1 + delta_soy_MA +
+    delta_cotton_1 + delta_cotton_MA +
+    delta_hogs_1 + delta_hogs_MA +
+    delta_cattle_1 + delta_cattle_MA +
+    delta_wheat_1 + delta_wheat_MA +
+    factor(month_year),
+  data = dat_combined
+)
+summary(model_soybean_long_MA)
+
+
+# ==================================================
+# multinominal logistic regression for future
+# ==================================================
+
+# Each historical period has an equal share
+# short term model: use one lag differences
+model_corn_future_short <- multinom(
+  as.factor(corn_future_exp) ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 + factor(month_year),
+  data = dat_combined
+)
+summary(model_corn_future_short)
+
+model_soybean_future_short <- multinom(
+  as.factor(soybean_future_exp) ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 + factor(month_year),
+  data = dat_combined
+)
+summary(model_soybean_future_short )
+
+# long-term model: use multiple lag differences (1~6)
+model_corn_future_long <- multinom(
+  as.factor(corn_future_exp) ~ 
+    delta_corn_future_1 + delta_corn_future_2 + delta_corn_future_3 + delta_corn_future_4 + delta_corn_future_5 + delta_corn_future_6 +
+    delta_soybeans_future_1 + delta_soybeans_future_2 + delta_soybeans_future_3 + delta_soybeans_future_4 + delta_soybeans_future_5 + delta_soybeans_future_6 +
+    delta_cotton_future_1 + delta_cotton_future_2 + delta_cotton_future_3 + delta_cotton_future_4 + delta_cotton_future_5 + delta_cotton_future_6 +
+    delta_hogs_future_1 + delta_hogs_future_2 + delta_hogs_future_3 + delta_hogs_future_4 + delta_hogs_future_5 + delta_hogs_future_6 +
+    delta_cattle_future_1 + delta_cattle_future_2 + delta_cattle_future_3 + delta_cattle_future_4 + delta_cattle_future_5 + delta_cattle_future_6 +
+    delta_wheat_future_1 + delta_wheat_future_2 + delta_wheat_future_3 + delta_wheat_future_4 + delta_wheat_future_5 + delta_wheat_future_6 +
+    factor(month_year),
+  data = dat_combined
+)
+
+summary(model_corn_future_long)
+
+model_soybean_future_long <- multinom(
+  as.factor(soybean_future_exp) ~ 
+    delta_corn_future_1 + delta_corn_future_2 + delta_corn_future_3 + delta_corn_future_4 + delta_corn_future_5 + delta_corn_future_6 +
+    delta_soybeans_future_1 + delta_soybeans_future_2 + delta_soybeans_future_3 + delta_soybeans_future_4 + delta_soybeans_future_5 + delta_soybeans_future_6 +
+    delta_cotton_future_1 + delta_cotton_future_2 + delta_cotton_future_3 + delta_cotton_future_4 + delta_cotton_future_5 + delta_cotton_future_6 +
+    delta_hogs_future_1 + delta_hogs_future_2 + delta_hogs_future_3 + delta_hogs_future_4 + delta_hogs_future_5 + delta_hogs_future_6 +
+    delta_cattle_future_1 + delta_cattle_future_2 + delta_cattle_future_3 + delta_cattle_future_4 + delta_cattle_future_5 + delta_cattle_future_6 +
+    delta_wheat_future_1 + delta_wheat_future_2 + delta_wheat_future_3 + delta_wheat_future_4 + delta_wheat_future_5 + delta_wheat_future_6 +
+    factor(month_year),
+  data = dat_combined
+)
+
+summary(model_soybean_future_long)
+
+
+# yesterday VS moving average for history 
+dat_combined <- dat_combined %>%
+  mutate(
+    # Corn future moving average from lag 2 to lag 6
+    delta_corn_future_MA = rowMeans(dplyr::select(., delta_corn_future_2, delta_corn_future_3, delta_corn_future_4, delta_corn_future_5, delta_corn_future_6), na.rm = TRUE),
+    # Soybeans future moving average
+    delta_soy_future_MA = rowMeans(dplyr::select(., delta_soybeans_future_2, delta_soybeans_future_3, delta_soybeans_future_4, delta_soybeans_future_5, delta_soybeans_future_6), na.rm = TRUE),
+    # Cotton future moving average
+    delta_cotton_future_MA = rowMeans(dplyr::select(., delta_cotton_future_2, delta_cotton_future_3, delta_cotton_future_4, delta_cotton_future_5, delta_cotton_future_6), na.rm = TRUE),
+    # Hogs future moving average
+    delta_hogs_future_MA = rowMeans(dplyr::select(., delta_hogs_future_2, delta_hogs_future_3, delta_hogs_future_4, delta_hogs_future_5, delta_hogs_future_6), na.rm = TRUE),
+    # Cattle future moving average
+    delta_cattle_future_MA = rowMeans(dplyr::select(., delta_cattle_future_2, delta_cattle_future_3, delta_cattle_future_4, delta_cattle_future_5, delta_cattle_future_6), na.rm = TRUE),
+    # Wheat future moving average
+    delta_wheat_future_MA = rowMeans(dplyr::select(., delta_wheat_future_2, delta_wheat_future_3, delta_wheat_future_4, delta_wheat_future_5, delta_wheat_future_6), na.rm = TRUE)
+  )
+
+# long-term model: use multiple lag differences (1~6)
+model_corn_future_long_MA <- multinom(
+  as.factor(corn_future_exp) ~ 
+    delta_corn_future_1 + delta_corn_future_MA +
+    delta_soybeans_future_1 + delta_soy_future_MA +
+    delta_cotton_future_1 + delta_cotton_future_MA +
+    delta_hogs_future_1 + delta_hogs_future_MA +
+    delta_cattle_future_1 + delta_cattle_future_MA +
+    delta_wheat_future_1 + delta_wheat_future_MA +
+    factor(month_year),
+  data = dat_combined
+)
+summary(model_corn_future_long_MA)
+
+model_soybean_future_long_MA <- multinom(
+  as.factor(soybean_future_exp) ~ 
+    delta_corn_future_1 + delta_corn_future_MA +
+    delta_soybeans_future_1 + delta_soy_future_MA +
+    delta_cotton_future_1 + delta_cotton_future_MA +
+    delta_hogs_future_1 + delta_hogs_future_MA +
+    delta_cattle_future_1 + delta_cattle_future_MA +
+    delta_wheat_future_1 + delta_wheat_future_MA +
+    factor(month_year),
+  data = dat_combined
+)
+summary(model_soybean_future_long_MA)
+
+
+
+
+
+# ==================================================
+# ordered logit
+# ==================================================
+dat_ordered <- dat_combined %>%
+  filter(corn_future_exp %in% c(1, 2, 3),
+         soybean_future_exp %in% c(1, 2, 3)) %>% 
+  mutate(
+    corn_future_exp = factor(
+      corn_future_exp,
+      levels = c(3, 2, 1),     # order：3（down） < 2（uncertain） < 1（up）
+      ordered = TRUE
+    ),
+    soybean_future_exp = factor(
+      soybean_future_exp,
+      levels = c(3, 2, 1),     # order：3（down） < 2（uncertain） < 1（up）
+      ordered = TRUE
+    )
+  )
+
+# ==================================================
+# ordered logit regression for cash contract
+# ==================================================
+# Each historical period has an equal share
+# short term model: use one lag differences
+ord_corn_short <- polr(
+  corn_future_exp ~ delta_corn_1 + delta_soybeans_1 + delta_cotton_1 + delta_hogs_1 + delta_cattle_1 + delta_wheat_1 + factor(month_year),
+  data = dat_ordered,
+  Hess = TRUE,
+  method = "logistic"
+)
+summary(ord_corn_short)
+
+ord_soybean_short <- polr(
+  soybean_future_exp ~ delta_corn_1 + delta_soybeans_1 + delta_cotton_1 + delta_hogs_1 + delta_cattle_1 + delta_wheat_1 + factor(month_year),
+  data = dat_ordered,
+  Hess = TRUE,
+  method = "logistic"
+) 
+summary(ord_soybean_short)
+levels(dat_ordered$month_year)
+
+# yesterday VS moving average for history 
+dat_ordered <- dat_ordered %>%
+  mutate(
+    # Corn moving average from lag 2 to lag 6
+    delta_corn_MA = rowMeans(dplyr::select(., delta_corn_2, delta_corn_3, delta_corn_4, delta_corn_5, delta_corn_6), na.rm = TRUE),
+    # Soybeans moving average
+    delta_soy_MA = rowMeans(dplyr::select(., delta_soybeans_2, delta_soybeans_3, delta_soybeans_4, delta_soybeans_5, delta_soybeans_6), na.rm = TRUE),
+    # Cotton moving average
+    delta_cotton_MA = rowMeans(dplyr::select(., delta_cotton_2, delta_cotton_3, delta_cotton_4, delta_cotton_5, delta_cotton_6), na.rm = TRUE),
+    # Hogs moving average
+    delta_hogs_MA = rowMeans(dplyr::select(., delta_hogs_2, delta_hogs_3, delta_hogs_4, delta_hogs_5, delta_hogs_6), na.rm = TRUE),
+    # Cattle moving average
+    delta_cattle_MA = rowMeans(dplyr::select(., delta_cattle_2, delta_cattle_3, delta_cattle_4, delta_cattle_5, delta_cattle_6), na.rm = TRUE),
+    # Wheat moving average
+    delta_wheat_MA = rowMeans(dplyr::select(., delta_wheat_2, delta_wheat_3, delta_wheat_4, delta_wheat_5, delta_wheat_6), na.rm = TRUE)
+  )
+
+# long-term model: use multiple lag differences (1~6)
+ord_corn_long_MA <- polr(
+  as.ordered(corn_future_exp) ~ 
+    delta_corn_1 + delta_corn_MA +
+    delta_soybeans_1 + delta_soy_MA +
+    delta_cotton_1 + delta_cotton_MA +
+    delta_hogs_1 + delta_hogs_MA +
+    delta_cattle_1 + delta_cattle_MA +
+    delta_wheat_1 + delta_wheat_MA +
+    factor(month_year),
+  data = dat_ordered,
+  Hess = TRUE
+)
+summary(ord_corn_long_MA)
+
+ord_soybean_long_MA <- polr(
+  as.ordered(soybean_future_exp) ~ 
+    delta_corn_1 + delta_corn_MA +
+    delta_soybeans_1 + delta_soy_MA +
+    delta_cotton_1 + delta_cotton_MA +
+    delta_hogs_1 + delta_hogs_MA +
+    delta_cattle_1 + delta_cattle_MA +
+    delta_wheat_1 + delta_wheat_MA +
+    factor(month_year),
+  data = dat_ordered,
+  Hess = TRUE
+)
+summary(ord_soybean_long_MA)
+
+# ==================================================
+# ordered logit regression for future
+# ==================================================
+# Each historical period has an equal share
+# short term model: use one lag differences
+ord_corn_future_short <- polr(
+  corn_future_exp ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 + factor(month_year),
+  data = dat_ordered,
+  Hess = TRUE,
+  method = "logistic"
+)
+summary(ord_corn_future_short)
+
+ord_soybean_future_short <- polr(
+  soybean_future_exp ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 + factor(month_year),
+  data = dat_ordered,
+  Hess = TRUE,
+  method = "logistic"
+) 
+summary(ord_soybean_future_short)
+
+# yesterday VS moving average for history 
+dat_ordered <- dat_ordered %>%
+  mutate(
+    # Corn moving average from lag 2 to lag 6
+    delta_corn_future_MA = rowMeans(dplyr::select(., delta_corn_future_2, delta_corn_future_3, delta_corn_future_4, delta_corn_future_5, delta_corn_future_6), na.rm = TRUE),
+    # Soybeans moving average
+    delta_soy_future_MA = rowMeans(dplyr::select(., delta_soybeans_future_2, delta_soybeans_future_3, delta_soybeans_future_4, delta_soybeans_future_5, delta_soybeans_future_6), na.rm = TRUE),
+    # Cotton moving average
+    delta_cotton_future_MA = rowMeans(dplyr::select(., delta_cotton_future_2, delta_cotton_future_3, delta_cotton_future_4, delta_cotton_future_5, delta_cotton_future_6), na.rm = TRUE),
+    # Hogs moving average
+    delta_hogs_future_MA = rowMeans(dplyr::select(., delta_hogs_future_2, delta_hogs_future_3, delta_hogs_future_4, delta_hogs_future_5, delta_hogs_future_6), na.rm = TRUE),
+    # Cattle moving average
+    delta_cattle_future_MA = rowMeans(dplyr::select(., delta_cattle_future_2, delta_cattle_future_3, delta_cattle_future_4, delta_cattle_future_5, delta_cattle_future_6), na.rm = TRUE),
+    # Wheat moving average
+    delta_wheat_future_MA = rowMeans(dplyr::select(., delta_wheat_future_2, delta_wheat_future_3, delta_wheat_future_4, delta_wheat_future_5, delta_wheat_future_6), na.rm = TRUE)
+  )
+
+# long-term model: use multiple lag differences (1~6)
+ord_corn_future_long_MA <- polr(
+  as.factor(corn_future_exp) ~ 
+    delta_corn_future_1 + delta_corn_future_MA +
+    delta_soybeans_future_1 + delta_soy_future_MA +
+    delta_cotton_future_1 + delta_cotton_future_MA +
+    delta_hogs_future_1 + delta_hogs_future_MA +
+    delta_cattle_future_1 + delta_cattle_future_MA +
+    delta_wheat_future_1 + delta_wheat_future_MA +
+    factor(month_year),
+  data = dat_ordered,
+  Hess = TRUE,
+  method = "logistic"
+)
+summary(ord_corn_future_long_MA)
+
+ord_soybean_future_long_MA <- polr(
+  as.factor(soybean_future_exp) ~ 
+    delta_corn_future_1 + delta_corn_future_MA +
+    delta_soybeans_future_1 + delta_soy_future_MA +
+    delta_cotton_future_1 + delta_cotton_future_MA +
+    delta_hogs_future_1 + delta_hogs_future_MA +
+    delta_cattle_future_1 + delta_cattle_future_MA +
+    delta_wheat_future_1 + delta_wheat_future_MA +
+    factor(month_year),
+  data = dat_ordered,
+  Hess = TRUE,
+  method = "logistic"
+)
+summary(ord_soybean_future_long_MA)
+
+
+
+
+
+
+
+
+
+
+
+## random forest ##
+library(randomForest)
+library(caret)
+
+dat_combined$corn_future_exp <- as.factor(dat_combined$corn_future_exp)
+dat_combined$month_year <- as.factor(dat_combined$month_year)
+
+# train and test set  
+set.seed(123)
+train_index <- createDataPartition(dat_combined$corn_future_exp, p = 0.8, list = FALSE)
+train_data <- dat_combined[train_index, ]
+test_data <- dat_combined[-train_index, ]
+
+# Random Forest model 
+train_data_clean <- na.omit(train_data)
+rf_model <- randomForest(corn_future_exp ~ delta_corn_1 + delta_soybeans_1 + 
+                           delta_cotton_1 + delta_hogs_1 + delta_cattle_1 + delta_wheat_1 + 
+                           month_year,
+                         data = train_data_clean,
+                         ntree = 500,
+                         importance = TRUE)
+
+
+print(rf_model)
+importance(rf_model)       
+varImpPlot(rf_model)       
+
+# forcast 
+rf_preds <- predict(rf_model, newdata = test_data)
+confusionMatrix(rf_preds, test_data$corn_future_exp)

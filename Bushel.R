@@ -537,7 +537,7 @@ model_data %>%
   summarise(valid_count = n()) %>%
   arrange(Year)
 
-#### stage 1 
+############ stage 1 ############
 model_data$Year <- as.factor(model_data$Year)
 model_data$Year <- relevel(model_data$Year, ref = "2023")  
 model_data_happy <- model_data %>%
@@ -557,7 +557,7 @@ model_data_happiness <- model_data %>%
 model_happiness <-polr(satisfy ~., data = model_data_happiness,Hess = TRUE)
 summary(model_happiness)
 
-#### stage 2 logistic regression
+############ stage 2 logistic regression ############
 model_cop <- glm(
   understanding_cost ~ 
     cost_accountant + cost_lender + cost_advisory + cost_software + cost_spreadsheet + cost_budgets +
