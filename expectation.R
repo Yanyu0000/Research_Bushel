@@ -8,10 +8,11 @@ library(nnet)
 library(MASS)
 
 # survey data #
+setwd("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data /Data")  
 dat <- read_excel(file.choose())  # NOTE: input the survey data by manual selection 
 dat <- dat %>%
   mutate(tradingDay = as.Date(Date, format = "%y%m%d")) %>%
-  select(-Date,-`Est GFI`,-`GFI Score`,-CSS_CellCode,-CSS_BadNpaNxx)
+  dplyr::select(-Date,-`Est GFI`,-`GFI Score`,-CSS_CellCode,-CSS_BadNpaNxx)
 
 # ======================
 # price contract data #
@@ -31,7 +32,7 @@ Corn <- Corn %>%
          #corn_high = high,
          #corn_low = low,
          corn = close) %>%
-  select(-symbol,-timestamp,-open,-high,-low,-volume,-openInterest) %>%
+  dplyr::select(-symbol,-timestamp,-open,-high,-low,-volume,-openInterest) %>%
   mutate(
     # corn_open_1 = lag(corn_open,1),
     # corn_high_1 = lag(corn_high,1),
@@ -70,7 +71,7 @@ Cotton <- Cotton %>%
          #cotton_high = high,
          #cotton_low = low,
          cotton = close) %>%
-  select(-symbol,-Date,-open,-high,-low) %>%
+  dplyr::select(-symbol,-Date,-open,-high,-low) %>%
   mutate(
     # cotton_open_1 = lag(cotton_open,1),
     # cotton_high_1 = lag(cotton_high,1),
@@ -109,7 +110,7 @@ Hogs <- Hogs %>%
          #hogs_high = high,
          #hogs_low = low,
          hogs = close) %>%
-  select(-symbol,-timestamp,-open,-high,-low,-volume,-openInterest) %>%
+  dplyr::select(-symbol,-timestamp,-open,-high,-low,-volume,-openInterest) %>%
   mutate(
     # hogs_open_1 = lag(hogs_open,1),
     # hogs_high_1 = lag(hogs_high,1),
@@ -148,7 +149,7 @@ Cattle <- Cattle %>%
          #cattle_high = high,
          #cattle_low = low,
          cattle = close) %>%
-  select(-symbol,-timestamp,-open,-high,-low,-volume,-openInterest) %>%
+  dplyr::select(-symbol,-timestamp,-open,-high,-low,-volume,-openInterest) %>%
   mutate(
     # cattle_open_1 = lag(cattle_open,1),
     # cattle_high_1 = lag(cattle_high,1),
@@ -187,7 +188,7 @@ Soybeans <- Soybeans %>%
          #soybeans_high = high,
          #soybeans_low = low,
          soybeans = close) %>%
-  select(-symbol,-timestamp,-open,-high,-low,-volume,-openInterest) %>%
+  dplyr::select(-symbol,-timestamp,-open,-high,-low,-volume,-openInterest) %>%
   mutate(
     # soybeans_open_1 = lag(soybeans_open,1),
     # soybeans_high_1 = lag(soybeans_high,1),
@@ -226,7 +227,7 @@ Wheat <- Wheat %>%
          #wheat_high = high,
          #wheat_low = low,
          wheat = close) %>%
-  select(-symbol,-timestamp,-open,-high,-low,-volume,-openInterest)  %>%
+  dplyr::select(-symbol,-timestamp,-open,-high,-low,-volume,-openInterest)  %>%
   mutate(
     # wheat_open_1 = lag(wheat_open,1),
     # wheat_high_1 = lag(wheat_high,1),
@@ -262,15 +263,19 @@ Wheat <- Wheat %>%
 # ============
 # future data 
 # ============
-ag_future <- read_excel(file.choose())   # NOTE: input the survey data by manual selection 
+#ag_future <- read_excel(file.choose())   # NOTE: input the survey data by manual selection 
+Corn_future <- read.csv(file.choose())
+Soybeans_future <- read.csv(file.choose())
+Wheat_future <- read.csv(file.choose())
 Cotton_future <- read.csv(file.choose())
-Hog_future <- read.csv(file.choose())
+Hogs_future <- read.csv(file.choose())
 Cattle_future <- read.csv(file.choose())
 
-Corn_future <- ag_future %>%
-  mutate(tradingDay = as.Date(Date)) %>%
-  rename(corn_future = corn_price) %>%
-  select(-Date,-soybean_price,-soybean_return,-wheat_price,-wheat_return) %>%
+Corn_future <- Corn_future %>%
+  mutate(tradingDay = as.Date(Time)) %>%
+  rename(corn_future = Last) %>%
+  rename(corn_return = Returns) %>%
+  dplyr::select(-Time,-CommodityCode,-ContractMonth,-YearCode,-Roll_Flag) %>%
   mutate(
     corn_future_1 = lag(corn_future,1),
     corn_return_1 = lag(corn_return,1),
@@ -286,29 +291,31 @@ Corn_future <- ag_future %>%
     corn_return_6 = lag(corn_return,6)
   )
 
-Soybeans_future <- ag_future %>%
-  mutate(tradingDay = as.Date(Date)) %>%
-  rename(soybeans_future = soybean_price) %>%
-  select(-Date,-corn_price,-corn_return,-wheat_price,-wheat_return) %>%
+Soybeans_future <- Soybeans_future %>%
+  mutate(tradingDay = as.Date(Time)) %>%
+  rename(soybeans_future = Last) %>%
+  rename(soybeans_return = Returns) %>%
+  dplyr::select(-Time,-CommodityCode,-ContractMonth,-YearCode,-Roll_Flag) %>%
   mutate(
     soybeans_future_1 = lag(soybeans_future,1),
-    soybeans_return_1 = lag(soybean_return,1),
+    soybeans_return_1 = lag(soybeans_return,1),
     soybeans_future_2 = lag(soybeans_future,2),
-    soybeans_return_2 = lag(soybean_return,2),
+    soybeans_return_2 = lag(soybeans_return,2),
     soybeans_future_3 = lag(soybeans_future,3),
-    soybeans_return_3 = lag(soybean_return,3),
+    soybeans_return_3 = lag(soybeans_return,3),
     soybeans_future_4 = lag(soybeans_future,4),
-    soybeans_return_4 = lag(soybean_return,4),
+    soybeans_return_4 = lag(soybeans_return,4),
     soybeans_future_5 = lag(soybeans_future,5),
-    soybeans_return_5 = lag(soybean_return,5),
+    soybeans_return_5 = lag(soybeans_return,5),
     soybeans_future_6 = lag(soybeans_future,6),
-    soybeans_return_6 = lag(soybean_return,6)
+    soybeans_return_6 = lag(soybeans_return,6)
   )
 
-Wheat_future <- ag_future %>%
-  mutate(tradingDay = as.Date(Date)) %>%
-  rename(wheat_future = wheat_price) %>%
-  select(-Date,-corn_price,-corn_return,-soybean_price,-soybean_return) %>%
+Wheat_future <- Wheat_future  %>%
+  mutate(tradingDay = as.Date(Time)) %>%
+  rename(wheat_future = Last) %>%
+  rename(wheat_return = Returns) %>%
+  dplyr::select(-Time,-CommodityCode,-ContractMonth,-YearCode,-Roll_Flag) %>%
   mutate(
     wheat_future_1 = lag(wheat_future,1),
     wheat_return_1 = lag(wheat_return,1),
@@ -328,7 +335,7 @@ Cotton_future <- Cotton_future  %>%
   mutate(tradingDay = as.Date(Time)) %>%
   rename(cotton_future = Last) %>%
   rename(cotton_return = Returns) %>%
-  select(-Time,-CommodityCode,-ContractMonth,-YearCode,-Roll_Flag) %>%
+  dplyr::select(-Time,-CommodityCode,-ContractMonth,-YearCode,-Roll_Flag) %>%
   mutate(
     cotton_future_1 = lag(cotton_future,1),
     cotton_return_1 = lag(cotton_return,1),
@@ -344,11 +351,11 @@ Cotton_future <- Cotton_future  %>%
     cotton_return_6 = lag(cotton_return,6)
   )
 
-Hogs_future <- Hog_future  %>%
+Hogs_future <- Hogs_future  %>%
   mutate(tradingDay = as.Date(Time)) %>%
   rename(hogs_future = Last) %>%
   rename(hogs_return = Returns) %>%
-  select(-Time,-CommodityCode,-ContractMonth,-YearCode,-Roll_Flag) %>%
+  dplyr::select(-Time,-CommodityCode,-ContractMonth,-YearCode,-Roll_Flag) %>%
   mutate(
     hogs_future_1 = lag(hogs_future,1),
     hogs_return_1 = lag(hogs_return,1),
@@ -368,7 +375,7 @@ Cattle_future <- Cattle_future  %>%
   mutate(tradingDay = as.Date(Time)) %>%
   rename(cattle_future = Last) %>%
   rename(cattle_return = Returns) %>%
-  select(-Time,-CommodityCode,-ContractMonth,-YearCode,-Roll_Flag) %>%
+  dplyr::select(-Time,-CommodityCode,-ContractMonth,-YearCode,-Roll_Flag) %>%
   mutate(
     cattle_future_1 = lag(cattle_future,1),
     cattle_return_1 = lag(cattle_return,1),
@@ -406,9 +413,9 @@ table(dat_combined$soybean_future_below)
 #	Do you think July 2020 corn futures prices will fall below $3.50 per bushel between now and July 1? Yes or No?
 
 # 0: A-A uncertain with big change
-# 1: A-B / A-C up
+# 1: A-B / A-C up(optimistic)
 # 2: C-B / B-B / C-C / B-C uncertain
-# 3: C-A / B-A down
+# 3: C-A / B-A down(pessimistic)
 table(dat_combined$corn_future_exceed, dat_combined$corn_future_below)
 table(dat_combined$soybean_future_exceed, dat_combined$soybean_future_below)
 dat_combined <- dat_combined %>%
@@ -450,6 +457,54 @@ dat_combined$month_year <- format(dat_combined$tradingDay, "%Y-%m")
 dat_combined$month_year <- factor(dat_combined$month_year,
                                   levels = sort(unique(dat_combined$month_year)))
 
+
+# generate new data set 
+dat_set1 <- dat_combined %>%
+  filter(!(corn_future_exceed == "A" & corn_future_below == "A")) %>%
+  filter(!(soybean_future_exceed == "A" & soybean_future_below == "A"))
+
+dat_set2 <- dat_combined %>%
+  mutate(
+    corn_future_exp = case_when(
+      corn_future_exceed == "A" & corn_future_below %in% c("B", "C") ~ 1,   # optimistic
+      corn_future_exceed %in% c("B", "C") & corn_future_below %in% c("B", "C") ~ 2,  
+      corn_future_exceed == "A" & corn_future_below == "A" ~ 2,             # uncertain
+      corn_future_exceed %in% c("B", "C") & corn_future_below == "A" ~ 3    # pessimistic
+    ),
+    soybean_future_exp = case_when(
+      soybean_future_exceed == "A" & soybean_future_below %in% c("B", "C") ~ 1,
+      soybean_future_exceed %in% c("B", "C") & soybean_future_below %in% c("B", "C") ~ 2,
+      soybean_future_exceed == "A" & soybean_future_below == "A" ~ 2,
+      soybean_future_exceed %in% c("B", "C") & soybean_future_below == "A" ~ 3
+    )
+  )
+
+# ==================================================
+# MNL future + optimistic/pessimistic/low uncertain
+# ==================================================
+model_corn_future_short_set1 <- multinom(
+  as.factor(corn_future_exp) ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 + factor(month_year),
+  data = dat_set1
+)
+summary(model_corn_future_short_set1)
+
+model_soybean_future_short_set1 <- multinom(
+  as.factor(soybean_future_exp) ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 + factor(month_year),
+  data = dat_set1
+)
+summary(model_soybean_future_short_set1)
+
+
+
+
+
+
+
+
+
+# ==================================================
+# optimistic/pessimistic/low uncertain/high uncertain
+# ==================================================
 # ==================================================
 # multinominal logistic regression for cash contract 
 # ==================================================
