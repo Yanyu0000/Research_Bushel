@@ -260,9 +260,9 @@ Wheat <- Wheat %>%
     wheat_6 = lag(wheat,6),
   )  
 
-# ============
+# =======================
 # future data 
-# ============
+# =======================
 #ag_future <- read_excel(file.choose())   # NOTE: input the survey data by manual selection 
 Corn_future <- read.csv(file.choose())
 Soybeans_future <- read.csv(file.choose())
@@ -288,7 +288,10 @@ Corn_future <- Corn_future %>%
     corn_future_5 = lag(corn_future,5),
     corn_return_5 = lag(corn_return,5),
     corn_future_6 = lag(corn_future,6),
-    corn_return_6 = lag(corn_return,6)
+    corn_return_6 = lag(corn_return,6),
+    corn_future_22 = lag(corn_future,22),
+    corn_delta_week = (corn_future_1-corn_future_6)/corn_future_6,
+    corn_delta_month = (corn_future_1-corn_future_22)/corn_future_22
   )
 
 Soybeans_future <- Soybeans_future %>%
@@ -308,7 +311,10 @@ Soybeans_future <- Soybeans_future %>%
     soybeans_future_5 = lag(soybeans_future,5),
     soybeans_return_5 = lag(soybeans_return,5),
     soybeans_future_6 = lag(soybeans_future,6),
-    soybeans_return_6 = lag(soybeans_return,6)
+    soybeans_return_6 = lag(soybeans_return,6),
+    soybeans_future_22 = lag(soybeans_future,22),
+    soybeans_delta_week = (soybeans_future_1-soybeans_future_6)/soybeans_future_6,
+    soybeans_delta_month = (soybeans_future_1-soybeans_future_22)/soybeans_future_22
   )
 
 Wheat_future <- Wheat_future  %>%
@@ -328,7 +334,10 @@ Wheat_future <- Wheat_future  %>%
     wheat_future_5 = lag(wheat_future,5),
     wheat_return_5 = lag(wheat_return,5),
     wheat_future_6 = lag(wheat_future,6),
-    wheat_return_6 = lag(wheat_return,6)
+    wheat_return_6 = lag(wheat_return,6),
+    wheat_future_22 = lag(wheat_future,22),
+    wheat_delta_week = (wheat_future_1-wheat_future_6)/wheat_future_6,
+    wheat_delta_month = (wheat_future_1-wheat_future_22)/wheat_future_22
   )
 
 Cotton_future <- Cotton_future  %>%
@@ -348,7 +357,10 @@ Cotton_future <- Cotton_future  %>%
     cotton_future_5 = lag(cotton_future,5),
     cotton_return_5 = lag(cotton_return,5),
     cotton_future_6 = lag(cotton_future,6),
-    cotton_return_6 = lag(cotton_return,6)
+    cotton_return_6 = lag(cotton_return,6),
+    cotton_future_22 = lag(cotton_future,22),
+    cotton_delta_week = (cotton_future_1-cotton_future_6)/cotton_future_6,
+    cotton_delta_month = (cotton_future_1-cotton_future_22)/cotton_future_22
   )
 
 Hogs_future <- Hogs_future  %>%
@@ -368,7 +380,10 @@ Hogs_future <- Hogs_future  %>%
     hogs_future_5 = lag(hogs_future,5),
     hogs_return_5 = lag(hogs_return,5),
     hogs_future_6 = lag(hogs_future,6),
-    hogs_return_6 = lag(hogs_return,6)
+    hogs_return_6 = lag(hogs_return,6),
+    hogs_future_22 = lag(hogs_future,22),
+    hogs_delta_week = (hogs_future_1-hogs_future_6)/hogs_future_6,
+    hogs_delta_month = (hogs_future_1-hogs_future_22)/hogs_future_22
   )
 
 Cattle_future <- Cattle_future  %>%
@@ -388,15 +403,51 @@ Cattle_future <- Cattle_future  %>%
     cattle_future_5 = lag(cattle_future,5),
     cattle_return_5 = lag(cattle_return,5),
     cattle_future_6 = lag(cattle_future,6),
-    cattle_return_6 = lag(cattle_return,6)
+    cattle_return_6 = lag(cattle_return,6),
+    cattle_future_22 = lag(cattle_future,22),
+    cattle_delta_week = (cattle_future_1-cattle_future_6)/cattle_future_6,
+    cattle_delta_month = (cattle_future_1-cattle_future_22)/cattle_future_22
   )
 
+# =======================
+# USDA report / S&P
+# =======================
+library(dplyr)
+report <- read_excel("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data /Data/Copy of AG Report Dates 2018_2025_final.xlsx")
+colnames(report)[1] <- "tradingDay"
+report$tradingDay <- as.Date(report$tradingDay)
+report <- report %>%
+  dplyr::select(tradingDay, WASDE, CPZS, GS, CROP, `Cattle Combined`)
+report <- report %>%
+  mutate(WASDE_minus1 = lead(WASDE, n = 1, default = 0),  
+         WASDE_plus1  = lag(WASDE, n = 1, default = 0), 
+         CPZS_minus1  = lead(CPZS, n = 1, default = 0),  
+         CPZS_plus1   = lag(CPZS, n = 1, default = 0),  
+         GS_minus1    = lead(GS, n = 1, default = 0),  
+         GS_plus1     = lag(GS, n = 1, default = 0),  
+         CROP_minus1  = lead(CROP, n = 1, default = 0),  
+         CROP_plus1   = lag(CROP, n = 1, default = 0),  
+         `Cattle Combined_minus1` = lead(`Cattle Combined`, n = 1, default = 0),  
+         `Cattle Combined_plus1`  = lag(`Cattle Combined`, n = 1, default = 0)
+   )
+
+SP <- read_excel("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data /Data/PerformanceGraphExport (7).xls",
+                 skip = 6)
+colnames(SP)[1] <- "tradingDay"
+SP$tradingDay <- as.Date(SP$tradingDay, origin = "1899-12-30")
+
+# =======================
 # merge data 
+# =======================
 price_list <- list(Corn,Cotton,Hogs,Cattle,Soybeans,Wheat,Corn_future,Cotton_future,Hogs_future,Cattle_future,Soybeans_future,Wheat_future)
 dat_combined <- reduce(
   list(Corn,Cotton,Hogs,Cattle,Soybeans,Wheat,Corn_future,Cotton_future,Hogs_future,Cattle_future,Soybeans_future,Wheat_future),
   ~ left_join(.x, .y, by = "tradingDay"),
   .init = dat
+)
+dat_combined <- reduce(
+  list(dat_combined, report, SP),
+  ~ left_join(.x, .y, by = "tradingDay")
 )
 write.csv(dat_combined, "dat_combined.csv", row.names = FALSE) # NOTE:change the save path if you need 
 
@@ -458,7 +509,9 @@ dat_combined$month_year <- factor(dat_combined$month_year,
                                   levels = sort(unique(dat_combined$month_year)))
 
 
-# generate new data set 
+# generate new data set with days lag
+# dat_set1: ignore high uncertainty
+# dat_set2: combine low and high uncertainty
 dat_set1 <- dat_combined %>%
   filter(!(corn_future_exceed == "A" & corn_future_below == "A")) %>%
   filter(!(soybean_future_exceed == "A" & soybean_future_below == "A"))
@@ -483,16 +536,334 @@ dat_set2 <- dat_combined %>%
 # MNL future + optimistic/pessimistic/low uncertain
 # ==================================================
 model_corn_future_short_set1 <- multinom(
-  as.factor(corn_future_exp) ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 + factor(month_year),
+  as.factor(corn_future_exp) ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 
+                            + corn_delta_week + soybeans_delta_week + cotton_delta_week + hogs_delta_week + cattle_delta_week + wheat_delta_week
+                            + corn_delta_month + soybeans_delta_month + cotton_delta_month + hogs_delta_month + cattle_delta_month + wheat_delta_month
+                            + factor(month_year),
   data = dat_set1
 )
 summary(model_corn_future_short_set1)
 
 model_soybean_future_short_set1 <- multinom(
-  as.factor(soybean_future_exp) ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 + factor(month_year),
+  as.factor(soybean_future_exp) ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 
+                                + corn_delta_week + soybeans_delta_week + cotton_delta_week + hogs_delta_week + cattle_delta_week + wheat_delta_week
+                                + corn_delta_month + soybeans_delta_month + cotton_delta_month + hogs_delta_month + cattle_delta_month + wheat_delta_month
+                                + factor(month_year),
   data = dat_set1
 )
 summary(model_soybean_future_short_set1)
+
+# ==================================================
+# MNL future + optimistic/pessimistic/low + high uncertain
+# ==================================================
+model_corn_future_short_set2 <- multinom(
+  as.factor(corn_future_exp) ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 
+  + corn_delta_week + soybeans_delta_week + cotton_delta_week + hogs_delta_week + cattle_delta_week + wheat_delta_week
+  + corn_delta_month + soybeans_delta_month + cotton_delta_month + hogs_delta_month + cattle_delta_month + wheat_delta_month
+  + factor(month_year),
+  data = dat_set2
+)
+summary(model_corn_future_short_set2)
+
+model_soybean_future_short_set2 <- multinom(
+  as.factor(soybean_future_exp) ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 
+  + corn_delta_week + soybeans_delta_week + cotton_delta_week + hogs_delta_week + cattle_delta_week + wheat_delta_week
+  + corn_delta_month + soybeans_delta_month + cotton_delta_month + hogs_delta_month + cattle_delta_month + wheat_delta_month
+  + factor(month_year),
+  data = dat_set2
+)
+summary(model_soybean_future_short_set2)
+
+
+
+# ==================================================
+# ordered future + optimistic/pessimistic/low uncertain
+# ==================================================
+dat_set1$corn_future_exp_ord <- factor(dat_set1$corn_future_exp,
+                                       levels = c("3", "2", "1"),
+                                       ordered = TRUE)
+
+ord_corn_future_set1 <- polr(
+  corn_future_exp_ord ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + 
+    delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 +
+    corn_delta_week + soybeans_delta_week + cotton_delta_week + hogs_delta_week + 
+    cattle_delta_week + wheat_delta_week +
+    corn_delta_month + soybeans_delta_month + cotton_delta_month + hogs_delta_month + 
+    cattle_delta_month + wheat_delta_month +
+    factor(month_year),
+  data = dat_set1,
+  Hess = TRUE
+)
+summary(ord_corn_future_set1)
+
+dat_set1$soybean_future_exp_ord <- factor(dat_set1$soybean_future_exp,
+                                          levels = c("3", "2", "1"),
+                                          ordered = TRUE)
+
+ord_soybean_future_set1 <- polr(
+  soybean_future_exp_ord ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + 
+    delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 +
+    corn_delta_week + soybeans_delta_week + cotton_delta_week + hogs_delta_week + 
+    cattle_delta_week + wheat_delta_week +
+    corn_delta_month + soybeans_delta_month + cotton_delta_month + hogs_delta_month + 
+    cattle_delta_month + wheat_delta_month +
+    factor(month_year),
+  data = dat_set1,
+  Hess = TRUE
+)
+summary(ord_soybean_future_set1)
+
+# ==================================================
+# ordered future + optimistic/pessimistic/low + high uncertain
+# ==================================================
+# positive and negative 
+make_pos_neg <- function(x, prefix) {
+  out <- data.frame(
+    setNames(list(ifelse(x >= 0, 1, 0)), paste0(prefix, "_pos")),
+    setNames(list(ifelse(x < 0, 1, 0)),  paste0(prefix, "_neg"))
+  )
+  return(out)
+}
+
+vars_yesterday  <- c("delta_corn_future_1", "delta_soybeans_future_1",
+                  "delta_cotton_future_1", "delta_hogs_future_1",
+                  "delta_cattle_future_1", "delta_wheat_future_1")
+
+vars_week    <- c("corn_delta_week", "soybeans_delta_week", "cotton_delta_week",
+                  "hogs_delta_week", "cattle_delta_week", "wheat_delta_week")
+
+vars_month   <- c("corn_delta_month", "soybeans_delta_month", "cotton_delta_month",
+                  "hogs_delta_month", "cattle_delta_month", "wheat_delta_month")
+
+for (v in c(vars_yesterday, vars_week, vars_month)) {
+  dat_set2 <- cbind(dat_set2, make_pos_neg(dat_set2[[v]], v))
+}
+
+# for corn expectation
+dat_set2$corn_future_exp_ord <- factor(dat_set2$corn_future_exp,
+                                       levels = c("3", "2", "1"),
+                                       ordered = TRUE)
+
+all_vars <- c(
+  paste0(vars_yesterday,  "_pos"),  paste0(vars_yesterday,  "_neg"),
+  paste0(vars_week,    "_pos"),  paste0(vars_week,    "_neg"),
+  paste0(vars_month,   "_pos"),  paste0(vars_month,   "_neg"),
+  "factor(month_year)"
+)
+
+form <- as.formula(
+  paste("corn_future_exp_ord ~", paste(all_vars, collapse = " + "))
+)
+
+ord_corn_future_posneg_set2 <- polr(
+   form,
+   data = dat_set2,
+   Hess = TRUE
+ )
+summary(ord_corn_future_posneg_set2)
+
+# for soybean expectation
+dat_set2$soybean_future_exp_ord <- factor(
+  dat_set2$soybean_future_exp,
+  levels = c("3", "2", "1"),
+  ordered = TRUE
+)
+
+form_soy <- as.formula(
+  paste("soybean_future_exp_ord ~", paste(all_vars, collapse = " + "))
+)
+
+ord_soybean_future_posneg_set2 <- polr(
+  form_soy,
+  data = dat_set2,
+  Hess = TRUE
+)
+
+summary(ord_soybean_future_posneg_set2)
+
+
+# positive & zero range & negative 
+library(ggplot2)
+
+p40 <- quantile(dat_set2$delta_corn_future_1, 0.40, na.rm = TRUE)
+p60 <- quantile(dat_set2$delta_corn_future_1, 0.60, na.rm = TRUE)
+
+ggplot(dat_set2, aes(x = delta_corn_future_1)) +
+  geom_density(fill = "lightblue", alpha = 0.5) +
+  geom_vline(xintercept = p40, color = "red", linetype = "dashed", size = 1) +
+  geom_vline(xintercept = p60, color = "blue", linetype = "dashed", size = 1) +
+  annotate("text", x = p40, y = 0, label = "P40", vjust = -1, color = "red", size = 5) +
+  annotate("text", x = p60, y = 0, label = "P60", vjust = -1, color = "blue", size = 5) +
+  labs(
+    title = "Density of delta_corn_future_1 with 40% and 60% Quantiles",
+    x = "delta_corn_future_1",
+    y = "Density"
+  ) +
+  theme_minimal()
+
+
+
+vars_all <- c(
+"delta_corn_future_1", "delta_soybeans_future_1", "delta_cotton_future_1",
+"delta_hogs_future_1", "delta_cattle_future_1", "delta_wheat_future_1",
+"corn_delta_week", "soybeans_delta_week", "cotton_delta_week",
+"hogs_delta_week", "cattle_delta_week", "wheat_delta_week",
+"corn_delta_month", "soybeans_delta_month", "cotton_delta_month",
+"hogs_delta_month", "cattle_delta_month", "wheat_delta_month"
+)
+
+for (v in vars_all) {
+  
+  p40 <- quantile(dat_set2[[v]], 0.40, na.rm = TRUE)
+  p60 <- quantile(dat_set2[[v]], 0.60, na.rm = TRUE)
+  p40 <- min(p40, 0)
+  
+  dat_set2[[paste0(v, "_pos")]] <- ifelse(dat_set2[[v]] > p60, 1, 0)
+  dat_set2[[paste0(v, "_neg")]] <- ifelse(dat_set2[[v]] < p40, 1, 0)
+}
+
+all_vars <- c(
+  paste0(vars_all, "_pos"),
+  paste0(vars_all, "_neg"),
+  "factor(month_year)"
+)
+
+form <- as.formula(
+  paste("corn_future_exp_ord ~", paste(all_vars, collapse = " + "))
+)
+
+ord_corn_future_mid20_set2 <- polr(
+  form,
+  data = dat_set2,
+  Hess = TRUE
+)
+
+summary(ord_corn_future_mid20_set2)
+
+# for soybean expectation
+form_soy <- as.formula(
+  paste("soybean_future_exp_ord ~", paste(all_vars, collapse = " + "))
+)
+
+ord_soybean_future_mid20_set2 <- polr(
+  form_soy,
+  data = dat_set2,
+  Hess = TRUE
+)
+summary(ord_soybean_future_mid20_set2)
+
+
+ord_corn_future_set2 <- polr(
+  corn_future_exp_ord ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 +
+    delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 +
+    corn_delta_week + soybeans_delta_week + cotton_delta_week + hogs_delta_week +
+    cattle_delta_week + wheat_delta_week +
+    corn_delta_month + soybeans_delta_month + cotton_delta_month + hogs_delta_month +
+    cattle_delta_month + wheat_delta_month +
+    factor(month_year),
+  data = dat_set2,
+  Hess = TRUE
+)
+summary(ord_corn_future_set2)
+
+
+dat_set2$soybean_future_exp_ord <- factor(dat_set2$soybean_future_exp,
+                                          levels = c("3", "2", "1"),
+                                          ordered = TRUE)
+
+ord_soybean_future_set2 <- polr(
+  soybean_future_exp_ord ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + 
+    delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 +
+    corn_delta_week + soybeans_delta_week + cotton_delta_week + hogs_delta_week + 
+    cattle_delta_week + wheat_delta_week +
+    corn_delta_month + soybeans_delta_month + cotton_delta_month + hogs_delta_month + 
+    cattle_delta_month + wheat_delta_month +
+    factor(month_year),
+  data = dat_set2,
+  Hess = TRUE
+)
+summary(ord_soybean_future_set2)
+
+# ==================================================
+# ordered future + optimistic/pessimistic/low + high uncertain
+# report  +  SP
+# ==================================================
+dat_set2$corn_future_exp_ord <- factor(dat_set2$corn_future_exp,
+                                       levels = c("3", "2", "1"),
+                                       ordered = TRUE)
+
+# ord_corn_future_report2 <- polr(
+#   corn_future_exp_ord ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 +
+#                         delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 +
+#                         corn_delta_week + soybeans_delta_week + cotton_delta_week + hogs_delta_week +
+#                         cattle_delta_week + wheat_delta_week +
+#                         corn_delta_month + soybeans_delta_month + cotton_delta_month + hogs_delta_month +
+#                         cattle_delta_month + wheat_delta_month +
+#                         WASDE + WASDE_minus1 + WASDE_plus1 + CPZS + CPZS_minus1 + CPZS_plus1 +
+#                         GS + GS_minus1 + GS_plus1 + CROP + CROP_minus1 + CROP_plus1 +
+#                         `Cattle Combined`+ `Cattle Combined_minus1` + `Cattle Combined_plus1` +
+#                         `S&P 500` + factor(month_year),
+#   data = dat_set2,
+#   Hess = TRUE
+# )
+# summary(ord_corn_future_report2)
+
+ord_corn_future_report <- polr(
+  corn_future_exp_ord ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + 
+    delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 +
+    corn_delta_week + soybeans_delta_week + cotton_delta_week + hogs_delta_week + 
+    cattle_delta_week + wheat_delta_week +
+    corn_delta_month + soybeans_delta_month + cotton_delta_month + hogs_delta_month + 
+    cattle_delta_month + wheat_delta_month +
+    GS + GS_minus1 + GS_plus1 + 
+    `S&P 500` + factor(month_year),
+  data = dat_set2,
+  Hess = TRUE
+)
+summary(ord_corn_future_report)
+
+
+
+dat_set2$soybean_future_exp_ord <- factor(dat_set2$soybean_future_exp,
+                                          levels = c("3", "2", "1"),
+                                          ordered = TRUE)
+
+ord_soybean_future_report <- polr(
+  soybean_future_exp_ord ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + 
+    delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 +
+    corn_delta_week + soybeans_delta_week + cotton_delta_week + hogs_delta_week + 
+    cattle_delta_week + wheat_delta_week +
+    corn_delta_month + soybeans_delta_month + cotton_delta_month + hogs_delta_month + 
+    cattle_delta_month + wheat_delta_month +
+    WASDE + WASDE_minus1 + WASDE_plus1 + 
+    `S&P 500` + factor(month_year),
+  data = dat_set2,
+  Hess = TRUE
+)
+summary(ord_soybean_future_report)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -687,9 +1058,6 @@ model_soybean_future_long_MA <- multinom(
   data = dat_combined
 )
 summary(model_soybean_future_long_MA)
-
-
-
 
 
 # ==================================================
