@@ -534,7 +534,7 @@ dat_set2 <- dat_combined %>%
   )
 
 # ==================================================
-# ordered future + optimistic/pessimistic/low + high uncertain
+# ordered future + optimistic(1)/low + high uncertain(2)/pessimistic(3)
 # report  +  SP
 # ==================================================
 dat_set2$corn_future_exp_ord <- factor(dat_set2$corn_future_exp,
@@ -591,6 +591,95 @@ ord_soybean_future_report <- polr(
   Hess = TRUE
 )
 summary(ord_soybean_future_report)
+
+
+
+
+
+
+#################################################################
+# Gradient Boosting for Ordinal Classification # 
+#################################################################
+library(dplyr)
+library(xgboost)
+library(caret)
+library(Matrix)
+
+# test set/ out of sample 
+set.seed(123)
+idx <- createDataPartition(dat_set2$corn_future_exp_ord,
+                           p = 0.7, list = FALSE)
+
+train <- dat_set2[idx, ]
+test  <- dat_set2[-idx, ]
+
+# Ordered Logit
+ord_logit <- polr(
+  corn_future_exp_ord ~
+    delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + 
+    delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 +
+    corn_delta_week + soybeans_delta_week + cotton_delta_week + hogs_delta_week + 
+    cattle_delta_week + wheat_delta_week +
+    corn_delta_month + soybeans_delta_month + cotton_delta_month + hogs_delta_month + 
+    cattle_delta_month + wheat_delta_month +
+    WASDE + WASDE_minus1 + WASDE_plus1 + 
+    `S&P 500` + factor(month_year),
+  data = train,
+  Hess = TRUE
+)
+
+pred_ord <- predict(ord_logit, newdata = test, type = "class")
+confusionMatrix(pred_ord, test$corn_future_exp_ord)
+
+# XGBoost
+## Constructing the design matrix
+x_vars <- c(
+  "delta_corn_future_1",
+  "delta_soybeans_future_1",
+  "delta_wheat_future_1",
+  "WASDE", "WASDE_minus1", "WASDE_plus1",
+  "S&P 500"
+)
+
+train_clean <- train %>% dplyr::select(all_of(x_vars), corn_future_exp_ord) %>% na.omit()
+test_clean  <- test  %>% dplyr::select(all_of(x_vars), corn_future_exp_ord) %>% na.omit()
+
+X_train <- model.matrix(~ . - 1, data = train_clean[, x_vars])
+y_train <- as.numeric(train_clean$corn_future_exp_ord) - 1
+
+X_test  <- model.matrix(~ . - 1, data = test_clean[, x_vars])
+y_test  <- as.numeric(test_clean$corn_future_exp_ord) - 1
+
+## train XGBoost
+dtrain <- xgb.DMatrix(data = X_train, label = y_train)
+dtest  <- xgb.DMatrix(data = X_test,  label = y_test)
+
+params <- list(
+  objective = "multi:softmax",
+  num_class = 3,
+  eval_metric = "mlogloss",
+  max_depth = 4,
+  eta = 0.1,
+  subsample = 0.8,
+  colsample_bytree = 0.8
+)
+
+xgb_model <- xgb.train(
+  params = params,
+  data = dtrain,
+  nrounds = 200,
+  verbose = 0
+)
+
+## predict
+pred_xgb <- predict(xgb_model, dtest)
+pred_xgb <- factor(pred_xgb + 1,
+                   levels = 1:3,
+                   labels = levels(test$corn_future_exp_ord))
+
+confusionMatrix(pred_xgb, test_clean$corn_future_exp_ord)
+
+
 
 
 
