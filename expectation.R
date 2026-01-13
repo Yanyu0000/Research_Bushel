@@ -6,27 +6,28 @@ library(lubridate)
 library(purrr)
 library(nnet)
 library(MASS)
+library(openxlsx)
 
 # ======================
 # survey data #
 # ======================
-setwd("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data /Data")  
-dat <- read_excel(file.choose())  # NOTE: input the survey data by manual selection 
+setwd("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data/Data")  
+dat <- read.xlsx("expectation_survey.xlsx") 
 dat <- dat %>%
   mutate(tradingDay = as.Date(Date, format = "%y%m%d")) %>%
-  dplyr::select(-Date,-`Est GFI`,-`GFI Score`,-CSS_CellCode,-CSS_BadNpaNxx)
+  dplyr::select(-Date,-`Est.GFI`,-`GFI.Score`,-CSS_CellCode,-CSS_BadNpaNxx)
 
 # ======================
 # price contract data #
 # ======================
 # NOTE: change the path of contract data 
 # cash contract
-Corn <- read.csv("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data /Data/cash contract/Corn_Y00.csv")
-Cotton <- read.csv("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data /Data/cash contract/Cotton_Y00.csv")
-Hogs <- read.csv("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data /Data/cash contract/Lean_Hogs_Y00.csv")
-Cattle <- read.csv("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data /Data/cash contract/Live_Cattle_Y00.csv")
-Soybeans <- read.csv("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data /Data/cash contract/Soybeans_Y00.csv")
-Wheat <- read.csv("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data /Data/cash contract/Wheat_Y00.csv")
+Corn <- read.csv("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data/Data/cash contract/Corn_Y00.csv")
+Cotton <- read.csv("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data/Data/cash contract/Cotton_Y00.csv")
+Hogs <- read.csv("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data/Data/cash contract/Lean_Hogs_Y00.csv")
+Cattle <- read.csv("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data/Data/cash contract/Live_Cattle_Y00.csv")
+Soybeans <- read.csv("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data/Data/cash contract/Soybeans_Y00.csv")
+Wheat <- read.csv("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data/Data/cash contract/Wheat_Y00.csv")
 
 Corn <- Corn %>%
   mutate(tradingDay = as.Date(tradingDay)) %>%
@@ -266,12 +267,12 @@ Wheat <- Wheat %>%
 # future data 
 # =======================
 # NOTE: input the following future data by manual selection 
-Corn_future <- read.csv(file.choose())
-Soybeans_future <- read.csv(file.choose())
-Wheat_future <- read.csv(file.choose())
-Cotton_future <- read.csv(file.choose())
-Hogs_future <- read.csv(file.choose())
-Cattle_future <- read.csv(file.choose())
+Corn_future <- read.csv("future/Corn_Continuous_Futures.csv")
+Soybeans_future <- read.csv("future/Soybeans_Continuous_Futures.csv")
+Wheat_future <- read.csv("future/Wheat_Continuous_Futures.csv")
+Cotton_future <- read.csv("future/Cotton_Continuous_Futures.csv")
+Hogs_future <- read.csv("future/Lean_Hogs_Continuous_Futures.csv")
+Cattle_future <- read.csv("future/Live_Cattle_Continuous_Futures.csv")
 
 Corn_future <- Corn_future %>%
   mutate(tradingDay = as.Date(Time)) %>%
@@ -415,7 +416,7 @@ Cattle_future <- Cattle_future  %>%
 # USDA report / S&P
 # =======================
 library(dplyr)
-report <- read_excel("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data /Data/Copy of AG Report Dates 2018_2025_final.xlsx")
+report <- read_excel("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data/Data/Copy of AG Report Dates 2018_2025_final.xlsx")
 colnames(report)[1] <- "tradingDay"
 report$tradingDay <- as.Date(report$tradingDay)
 report <- report %>%
@@ -433,7 +434,7 @@ report <- report %>%
          `Cattle Combined_plus1`  = lag(`Cattle Combined`, n = 1, default = 0)
    )
 
-SP <- read_excel("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data /Data/PerformanceGraphExport (7).xls",
+SP <- read_excel("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data/Data/PerformanceGraphExport (7).xls",
                  skip = 6)
 colnames(SP)[1] <- "tradingDay"
 SP$tradingDay <- as.Date(SP$tradingDay, origin = "1899-12-30")
@@ -512,7 +513,7 @@ dat_combined$month_year <- factor(dat_combined$month_year,
 
 # generate new data set with days lag
 # dat_set1: ignore high uncertainty
-# dat_set2: combine low and high uncertainty
+# dat_set2: combine low and high uncertainty (USE THIS)
 dat_set1 <- dat_combined %>%
   filter(!(corn_future_exceed == "A" & corn_future_below == "A")) %>%
   filter(!(soybean_future_exceed == "A" & soybean_future_below == "A"))
@@ -541,6 +542,10 @@ dat_set2$corn_future_exp_ord <- factor(dat_set2$corn_future_exp,
                                        levels = c("3", "2", "1"),
                                        ordered = TRUE)
 
+dat_set2$soybean_future_exp_ord <- factor(dat_set2$soybean_future_exp,
+                                          levels = c("3", "2", "1"),
+                                          ordered = TRUE)
+
 # WARNING: design appears to be rank-deficient, so dropping some coefs
 # JUST THREE COEFS LEFT 
 # ord_corn_future_report2 <- polr(
@@ -559,8 +564,103 @@ dat_set2$corn_future_exp_ord <- factor(dat_set2$corn_future_exp,
 # )
 # summary(ord_corn_future_report2)
 
-# NOTES:DIFFERENT RESULT WITH DIFFERENT REPORT 
-ord_corn_future_report <- polr(
+# ==============================================================
+# Changes in corn, soybeans, cotton, hogs, cattle, wheat (baseline)
+# ==============================================================
+ord_corn_future_report_1<- polr(
+  corn_future_exp_ord ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + 
+    delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 +
+    corn_delta_week + soybeans_delta_week + cotton_delta_week + hogs_delta_week + 
+    cattle_delta_week + wheat_delta_week +
+    corn_delta_month + soybeans_delta_month + cotton_delta_month + hogs_delta_month + 
+    cattle_delta_month + wheat_delta_month,
+  data = dat_set2,
+  Hess = TRUE
+)
+summary(ord_corn_future_report_1)
+
+ord_soybean_future_report_1 <- polr(
+  soybean_future_exp_ord ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + 
+    delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 +
+    corn_delta_week + soybeans_delta_week + cotton_delta_week + hogs_delta_week + 
+    cattle_delta_week + wheat_delta_week +
+    corn_delta_month + soybeans_delta_month + cotton_delta_month + hogs_delta_month + 
+    cattle_delta_month + wheat_delta_month,
+  data = dat_set2,
+  Hess = TRUE
+)
+summary(ord_soybean_future_report_1)
+
+# ==============================================================
+# Changes in corn, soybeans, cotton, hogs, cattle, wheat (baseline)
+# + month-year (survey) fixed effects
+# ==============================================================
+ord_corn_future_report_2 <- polr(
+  corn_future_exp_ord ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + 
+    delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 +
+    corn_delta_week + soybeans_delta_week + cotton_delta_week + hogs_delta_week + 
+    cattle_delta_week + wheat_delta_week +
+    corn_delta_month + soybeans_delta_month + cotton_delta_month + hogs_delta_month + 
+    cattle_delta_month + wheat_delta_month +
+    factor(month_year),
+  data = dat_set2,
+  Hess = TRUE
+)
+summary(ord_corn_future_report_2)
+
+ord_soybean_future_report_2 <- polr(
+  soybean_future_exp_ord ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + 
+    delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 +
+    corn_delta_week + soybeans_delta_week + cotton_delta_week + hogs_delta_week + 
+    cattle_delta_week + wheat_delta_week +
+    corn_delta_month + soybeans_delta_month + cotton_delta_month + hogs_delta_month + 
+    cattle_delta_month + wheat_delta_month +
+    factor(month_year),
+  data = dat_set2,
+  Hess = TRUE
+)
+summary(ord_soybean_future_report_2)
+
+# ==============================================================
+# Changes in corn, soybeans, cotton, hogs, cattle, wheat (baseline)
+# + month-year (survey) fixed effects
+# + WASDE dummy for day before, day of, day after
+# ==============================================================
+ord_corn_future_report_3 <- polr(
+  corn_future_exp_ord ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + 
+    delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 +
+    corn_delta_week + soybeans_delta_week + cotton_delta_week + hogs_delta_week + 
+    cattle_delta_week + wheat_delta_week +
+    corn_delta_month + soybeans_delta_month + cotton_delta_month + hogs_delta_month + 
+    cattle_delta_month + wheat_delta_month +
+    WASDE + WASDE_minus1 + WASDE_plus1 + 
+    factor(month_year),
+  data = dat_set2,
+  Hess = TRUE
+)
+summary(ord_corn_future_report_3)
+
+ord_soybean_future_report_3 <- polr(
+  soybean_future_exp_ord ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + 
+    delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 +
+    corn_delta_week + soybeans_delta_week + cotton_delta_week + hogs_delta_week + 
+    cattle_delta_week + wheat_delta_week +
+    corn_delta_month + soybeans_delta_month + cotton_delta_month + hogs_delta_month + 
+    cattle_delta_month + wheat_delta_month +
+    WASDE + WASDE_minus1 + WASDE_plus1 + 
+    factor(month_year),
+  data = dat_set2,
+  Hess = TRUE
+)
+summary(ord_soybean_future_report_3)
+
+# ==============================================================
+# Changes in corn, soybeans, cotton, hogs, cattle, wheat (baseline)
+# + month-year (survey) fixed effects
+# + WASDE dummy for day before, day of, day after
+# + S&P500 - daily price
+# ==============================================================
+ord_corn_future_report_4 <- polr(
   corn_future_exp_ord ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + 
     delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 +
     corn_delta_week + soybeans_delta_week + cotton_delta_week + hogs_delta_week + 
@@ -572,13 +672,9 @@ ord_corn_future_report <- polr(
   data = dat_set2,
   Hess = TRUE
 )
-summary(ord_corn_future_report)
+summary(ord_corn_future_report_4)
 
-dat_set2$soybean_future_exp_ord <- factor(dat_set2$soybean_future_exp,
-                                          levels = c("3", "2", "1"),
-                                          ordered = TRUE)
-
-ord_soybean_future_report <- polr(
+ord_soybean_future_report_4 <- polr(
   soybean_future_exp_ord ~ delta_corn_future_1 + delta_soybeans_future_1 + delta_cotton_future_1 + 
     delta_hogs_future_1 + delta_cattle_future_1 + delta_wheat_future_1 +
     corn_delta_week + soybeans_delta_week + cotton_delta_week + hogs_delta_week + 
@@ -590,7 +686,7 @@ ord_soybean_future_report <- polr(
   data = dat_set2,
   Hess = TRUE
 )
-summary(ord_soybean_future_report)
+summary(ord_soybean_future_report_4)
 
 
 
