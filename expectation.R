@@ -7,6 +7,7 @@ library(purrr)
 library(nnet)
 library(MASS)
 library(openxlsx)
+library(ggplot2)
 
 # ======================
 # survey data #
@@ -422,7 +423,7 @@ report$tradingDay <- as.Date(report$tradingDay)
 report <- report %>%
   dplyr::select(tradingDay, WASDE, CPZS, GS, CROP, `Cattle Combined`)
 report <- report %>%
-  mutate(WASDE_minus1 = lead(WASDE, n = 1, default = 0),  
+  mutate(WASDE_minus1 = lead(WASDE, n = 1, default = 0),  # if release tomorrow, =1
          WASDE_plus1  = lag(WASDE, n = 1, default = 0), 
          CPZS_minus1  = lead(CPZS, n = 1, default = 0),  
          CPZS_plus1   = lag(CPZS, n = 1, default = 0),  
@@ -438,6 +439,11 @@ SP <- read_excel("/Users/yanyuma/Downloads/0research/05 Ag Barometer Data/Data/P
                  skip = 6)
 colnames(SP)[1] <- "tradingDay"
 SP$tradingDay <- as.Date(SP$tradingDay, origin = "1899-12-30")
+SP <- SP %>%
+  arrange(tradingDay) %>%
+  mutate(
+    log_SP = log(`S&P 500`) - log(lag(`S&P 500`))
+  )
 
 # =======================
 # merge data 
@@ -668,7 +674,7 @@ ord_corn_future_report_4 <- polr(
     corn_delta_month + soybeans_delta_month + cotton_delta_month + hogs_delta_month + 
     cattle_delta_month + wheat_delta_month +
     WASDE + WASDE_minus1 + WASDE_plus1 + 
-    `S&P 500` + factor(month_year),
+    log_SP + factor(month_year),
   data = dat_set2,
   Hess = TRUE
 )
@@ -682,14 +688,208 @@ ord_soybean_future_report_4 <- polr(
     corn_delta_month + soybeans_delta_month + cotton_delta_month + hogs_delta_month + 
     cattle_delta_month + wheat_delta_month +
     WASDE + WASDE_minus1 + WASDE_plus1 + 
-    `S&P 500` + factor(month_year),
+    log_SP + factor(month_year),
   data = dat_set2,
   Hess = TRUE
 )
 summary(ord_soybean_future_report_4)
 
 
+#################################################################
+# Comparison table for models
+#################################################################
+install.packages("modelsummary")
+library(modelsummary)
 
+modelsummary(
+  list(
+    "Model 1" = ord_corn_future_report_1,
+    "Model 2" = ord_corn_future_report_2,
+    "Model 3" = ord_corn_future_report_3,
+    "Model 4" = ord_corn_future_report_4
+  ),
+  statistic = "std.error",
+  stars = TRUE
+)
+
+modelsummary(
+  list(ord_corn_future_report_1, ord_corn_future_report_2, ord_corn_future_report_3, ord_corn_future_report_4),
+  output = "models_polr_corn.tex",
+  stars = TRUE
+)
+
+modelsummary(
+  list(
+    "Model 5" = ord_soybean_future_report_1,
+    "Model 6" = ord_soybean_future_report_2,
+    "Model 7" = ord_soybean_future_report_3,
+    "Model 8" = ord_soybean_future_report_4
+  ),
+  statistic = "std.error",
+  stars = TRUE
+)
+
+modelsummary(
+  list(ord_soybean_future_report_1, ord_soybean_future_report_2, ord_soybean_future_report_3, ord_soybean_future_report_4),
+  output = "models_polr_soybean.tex",
+  stars = TRUE
+)
+
+#################################################################
+# Plots
+#################################################################
+# balanced statistics 
+library(dplyr)
+library(tidyr)
+library(zoo)
+library(ggplot2)
+df_corn <- dat_combined %>%
+  mutate(month_year = as.yearmon(month_year, "%Y-%m")) %>%
+  filter(corn_future_exp %in% c(1, 2, 3, 4)) %>%
+  filter(WASDE %in% c(0,1)) %>%
+  group_by(month_year, corn_future_exp) %>%
+  summarise(count = n(), .groups = "drop")
+
+df_corn_diff <- df_corn %>%
+  filter(corn_future_exp %in% c(1, 3)) %>%
+  pivot_wider(
+    names_from = corn_future_exp,
+    values_from = count,
+    names_prefix = "exp_",
+    values_fill = 0
+  ) %>%
+  mutate(
+    diff_1_3 = exp_1 - exp_3
+  )
+
+df_soybean <- dat_combined %>%
+  mutate(month_year = as.yearmon(month_year, "%Y-%m")) %>%
+  filter(soybean_future_exp %in% c(1, 2, 3, 4)) %>%
+  group_by(month_year, soybean_future_exp) %>%
+  summarise(count = n(), .groups = "drop")
+
+df_soybean_diff <- df_soybean %>%
+  filter(soybean_future_exp %in% c(1, 3)) %>%
+  pivot_wider(
+    names_from = soybean_future_exp,
+    values_from = count,
+    names_prefix = "exp_",
+    values_fill = 0
+  ) %>%
+  mutate(
+    diff_1_3 = exp_1 - exp_3
+  )
+
+df_plot <- bind_rows(
+  df_corn_diff %>% mutate(type = "Corn"),
+  df_soybean_diff %>% mutate(type = "Soybean")
+)
+
+ggplot(df_plot, aes(x = month_year, y = diff_1_3, color = type)) +
+  geom_point(size = 2, alpha = 0.8) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_rect(aes(xmin = as.yearmon("Feb 2018"), xmax = as.yearmon("Mar 2018"), ymin = -Inf, ymax = Inf), 
+            inherit.aes = F,
+            fill = "grey80",
+        alpha=0.01) +
+  geom_rect(aes(xmin = as.yearmon("May 2018"), xmax = as.yearmon("Jan 2019"), ymin = -Inf, ymax = Inf), 
+            inherit.aes = F,
+            fill = "grey80",
+        alpha=0.01) +
+  geom_rect(aes(xmin = as.yearmon("Apr 2019"), xmax = as.yearmon("May 2019"), ymin = -Inf, ymax = Inf), 
+            inherit.aes = F,
+            fill = "grey80",
+        alpha=0.01) +
+  geom_rect(aes(xmin = as.yearmon("Feb 2020"), xmax = as.yearmon("Mar 2020"), ymin = -Inf, ymax = Inf), 
+            inherit.aes = F,
+            fill = "grey80",
+        alpha=0.01) +
+  geom_rect(aes(xmin = as.yearmon("Oct 2021"), xmax = as.yearmon("Nov 2021"), ymin = -Inf, ymax = Inf), 
+            inherit.aes = F,
+            fill = "grey80",
+        alpha=0.01) +
+  geom_rect(aes(xmin = as.yearmon("Jan 2022"), xmax = as.yearmon("Jan 2022"), ymin = -Inf, ymax = Inf), 
+            inherit.aes = F,
+            fill = "grey80",
+        alpha=0.01) +
+  geom_rect(aes(xmin = as.yearmon("Mar 2022"), xmax = as.yearmon("Mar 2022"), ymin = -Inf, ymax = Inf), 
+            inherit.aes = F,
+            fill = "grey80",
+        alpha=0.01) +
+  geom_rect(aes(xmin = as.yearmon("May 2022"), xmax = as.yearmon("May 2022"), ymin = -Inf, ymax = Inf), 
+            inherit.aes = F,
+            fill = "grey80",
+        alpha=0.01) +
+  geom_rect(aes(xmin = as.yearmon("May 2022"), xmax = as.yearmon("May 2022"), ymin = -Inf, ymax = Inf), 
+            inherit.aes = F,
+            fill = "grey80",
+        alpha=0.01) +
+  geom_rect(aes(xmin = as.yearmon("Jan 2023"), xmax = as.yearmon("Mar 2023"), ymin = -Inf, ymax = Inf), 
+            inherit.aes = F,
+            fill = "grey80",
+        alpha=0.01) +
+  geom_rect(aes(xmin = as.yearmon("May 2023"), xmax = as.yearmon("Jun 2023"), ymin = -Inf, ymax = Inf), 
+            inherit.aes = F,
+            fill = "grey80",
+        alpha=0.01) +
+  geom_rect(aes(xmin = as.yearmon("Aug 2023"), xmax = as.yearmon("Jun 2024"), ymin = -Inf, ymax = Inf), 
+            inherit.aes = F,
+            fill = "grey80",
+        alpha=0.01) +
+  geom_rect(aes(xmin = as.yearmon("Aug 2023"), xmax = as.yearmon("Jun 2024"), ymin = -Inf, ymax = Inf), 
+            inherit.aes = F,
+            fill = "grey80",
+        alpha=0.01) +
+  geom_rect(aes(xmin = as.yearmon("Oct 2024"), xmax = as.yearmon("Oct 2024"), ymin = -Inf, ymax = Inf), 
+            inherit.aes = F,
+            fill = "grey80",
+        alpha=0.01) +
+  theme_bw()+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  labs(
+    x = "Time",
+    y = "count difference(optimistic - pessimistic)",
+    title = "Farmers' Optimism Index",
+    color = ""
+  )
+
+
+# explanatory variables
+## report 
+df_corn_explanatory <- dat_combined %>%
+  mutate(tradingDay = as.Date(tradingDay)) %>%
+  group_by(tradingDay) %>%
+  summarise(
+    wasde_1       = sum(WASDE == 1, na.rm = TRUE),
+    wasde_0       = sum(WASDE == 0, na.rm = TRUE),
+    wasde_minus_1 = sum(WASDE_minus1 == 1, na.rm = TRUE),
+    wasde_minus_0 = sum(WASDE_minus1 == 0, na.rm = TRUE),
+    wasde_plus1_1 = sum(WASDE_plus1 == 1, na.rm = TRUE),
+    wasde_plus1_0 = sum(WASDE_plus1 == 0, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+ggplot(df_corn_explanatory, aes(x = tradingDay, y = wasde_1)) +
+  geom_point(color = "steelblue", size = 2, alpha = 0.8) +  
+  theme_minimal() +
+  labs(
+    x = "Date",
+    y = "Number of farmers",
+    title = "Impact Index of WASDE Report on Farmers"
+  )
+
+## sp500
+SP$tradingDay <- as.Date(SP$tradingDay)
+
+ggplot(SP, aes(x = tradingDay, y = log_SP)) +
+  geom_line() +
+  labs(
+    x = "Trading Day",
+    y = "Daily Change",
+    title = "Stock Market Daily Change Over Time"
+  ) +
+  theme_minimal()
 
 
 
