@@ -545,11 +545,11 @@ dat_set2 <- dat_combined %>%
 # report  +  SP
 # ==================================================
 dat_set2$corn_future_exp_ord <- factor(dat_set2$corn_future_exp,
-                                       levels = c("3", "2", "1"),
+                                       levels = c("1", "2", "3"),
                                        ordered = TRUE)
 
 dat_set2$soybean_future_exp_ord <- factor(dat_set2$soybean_future_exp,
-                                          levels = c("3", "2", "1"),
+                                          levels = c("1", "2", "3"),
                                           ordered = TRUE)
 
 # WARNING: design appears to be rank-deficient, so dropping some coefs
@@ -698,7 +698,7 @@ summary(ord_soybean_future_report_4)
 #################################################################
 # Comparison table for models
 #################################################################
-install.packages("modelsummary")
+# install.packages("modelsummary")
 library(modelsummary)
 
 modelsummary(
